@@ -19,6 +19,8 @@
 #include "runtime/function/render/render_system.h"
 #include "runtime/function/render/window_system.h"
 
+#include "runtime/Renderer/RenderSystem.h"
+
 namespace Piccolo
 {
     RuntimeGlobalContext g_runtime_global_context;
@@ -50,8 +52,8 @@ namespace Piccolo
         m_particle_manager = std::make_shared<ParticleManager>();
         m_particle_manager->initialize();
 
-        m_render_system = std::make_shared<RenderSystem>();
-        RenderSystemInitInfo render_init_info;
+        m_render_system = std::make_shared<URenderSystem>();
+        FRenderSystemInitInfo render_init_info;
         render_init_info.window_system = m_window_system;
         m_render_system->initialize(render_init_info);
 

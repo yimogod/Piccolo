@@ -5,12 +5,12 @@
 namespace Piccolo
 {
     class WindowSystem;
-    class RenderSystem;
+    class URenderSystem;
 
     struct WindowUIInitInfo
     {
         std::shared_ptr<WindowSystem> window_system;
-        std::shared_ptr<RenderSystem> render_system;
+        std::shared_ptr<URenderSystem> render_system;
     };
 
     class WindowUI

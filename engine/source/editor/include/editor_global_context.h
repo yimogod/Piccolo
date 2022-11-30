@@ -5,7 +5,7 @@ namespace Piccolo
     struct EditorGlobalContextInitInfo
     {
         class WindowSystem* window_system;
-        class RenderSystem* render_system;
+        class URenderSystem* render_system;
         class PiccoloEngine*  engine_runtime;
     };
 
@@ -14,7 +14,7 @@ namespace Piccolo
     public:
         class EditorSceneManager* m_scene_manager {nullptr};
         class EditorInputManager* m_input_manager {nullptr};
-        class RenderSystem*       m_render_system {nullptr};
+        class URenderSystem*       m_render_system {nullptr};
         class WindowSystem*       m_window_system {nullptr};
         class PiccoloEngine*        m_engine_runtime {nullptr};
 

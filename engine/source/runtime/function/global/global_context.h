@@ -3,6 +3,8 @@
 #include <memory>
 #include <string>
 
+#include "Renderer/RenderSystem.h"
+
 namespace Piccolo
 {
     class LogSystem;
@@ -38,7 +40,7 @@ namespace Piccolo
         std::shared_ptr<WorldManager>      m_world_manager;
         std::shared_ptr<PhysicsManager>    m_physics_manager;
         std::shared_ptr<WindowSystem>      m_window_system;
-        std::shared_ptr<RenderSystem>      m_render_system;
+        std::shared_ptr<URenderSystem>      m_render_system;
         std::shared_ptr<ParticleManager>   m_particle_manager;
         std::shared_ptr<DebugDrawManager>  m_debugdraw_manager;
         std::shared_ptr<RenderDebugConfig> m_render_debug_config;

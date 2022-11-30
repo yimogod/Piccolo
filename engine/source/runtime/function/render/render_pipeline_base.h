@@ -36,8 +36,9 @@ namespace Piccolo
         void             initializeUIRenderBackend(WindowUI* window_ui);
         virtual uint32_t getGuidOfPickedMesh(const Vector2& picked_uv) = 0;
 
-    protected:
         std::shared_ptr<RHI> m_rhi;
+    public:
+        
 
         std::shared_ptr<RenderPassBase> m_directional_light_pass;
         std::shared_ptr<RenderPassBase> m_point_light_shadow_pass;
