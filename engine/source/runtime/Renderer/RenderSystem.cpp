@@ -7,7 +7,7 @@
 
 #include "runtime/function/render/render_camera.h"
 #include "runtime/function/render/render_pass.h"
-#include "runtime/function/render/render_pipeline.h"
+#include "RenderPipeline.h"
 #include "runtime/function/render/render_resource.h"
 #include "runtime/function/render/render_resource_base.h"
 #include "runtime/function/render/render_scene.h"
@@ -40,6 +40,7 @@ void URenderSystem::initialize(FRenderSystemInitInfo init_info)
     RHIInitInfo rhi_init_info;
     rhi_init_info.window_system = init_info.window_system;
 
+    //初始化 rhi
     m_rhi = std::make_shared<VulkanRHI>();
     m_rhi->initialize(rhi_init_info);
 
@@ -56,6 +57,7 @@ void URenderSystem::initialize(FRenderSystemInitInfo init_info)
     level_resource_desc.m_color_grading_resource_desc.m_color_grading_map =
         global_rendering_res.m_color_grading_map;
 
+    //加载引擎默认用到的资源, 比如天空盒
     m_render_resource = std::make_shared<RenderResource>();
     m_render_resource->uploadGlobalRenderResource(m_rhi, level_resource_desc);
 
@@ -77,11 +79,11 @@ void URenderSystem::initialize(FRenderSystemInitInfo init_info)
     m_render_scene->setVisibleNodesReference();
 
     // initialize render pipeline
-    RenderPipelineInitInfo pipeline_init_info;
+    FRenderPipelineInitInfo pipeline_init_info;
     pipeline_init_info.enable_fxaa     = global_rendering_res.m_enable_fxaa;
     pipeline_init_info.render_resource = m_render_resource;
 
-    m_render_pipeline        = std::make_shared<RenderPipeline>();
+    m_render_pipeline        = std::make_shared<URenderPipeline>();
     m_render_pipeline->m_rhi = m_rhi;
     m_render_pipeline->initialize(pipeline_init_info);
 
@@ -116,19 +118,8 @@ void URenderSystem::tick(float delta_time)
 
     g_runtime_global_context.m_debugdraw_manager->tick(delta_time);
 
-    // render one frame
-    if (m_render_pipeline_type == RENDER_PIPELINE_TYPE::FORWARD_PIPELINE)
-    {
-        m_render_pipeline->forwardRender(m_rhi, m_render_resource);
-    }
-    else if (m_render_pipeline_type == RENDER_PIPELINE_TYPE::DEFERRED_PIPELINE)
-    {
-        m_render_pipeline->deferredRender(m_rhi, m_render_resource);
-    }
-    else
-    {
-        LOG_ERROR(__FUNCTION__, "unsupported render pipeline type");
-    }
+    // 基类方法, 相机灯光阴影pass准备数据
+    m_render_pipeline->deferredRender(m_rhi, m_render_resource);
 }
 
 void URenderSystem::clear()
@@ -211,17 +202,17 @@ void URenderSystem::setVisibleAxis(std::optional<RenderEntity> axis)
 
     if (axis.has_value())
     {
-        std::static_pointer_cast<RenderPipeline>(m_render_pipeline)->setAxisVisibleState(true);
+        std::static_pointer_cast<URenderPipeline>(m_render_pipeline)->setAxisVisibleState(true);
     }
     else
     {
-        std::static_pointer_cast<RenderPipeline>(m_render_pipeline)->setAxisVisibleState(false);
+        std::static_pointer_cast<URenderPipeline>(m_render_pipeline)->setAxisVisibleState(false);
     }
 }
 
 void URenderSystem::setSelectedAxis(size_t selected_axis)
 {
-    std::static_pointer_cast<RenderPipeline>(m_render_pipeline)->setSelectedAxis(selected_axis);
+    std::static_pointer_cast<URenderPipeline>(m_render_pipeline)->setSelectedAxis(selected_axis);
 }
 
 GuidAllocator<GameObjectPartId>& URenderSystem::getGOInstanceIdAllocator()
@@ -241,11 +232,6 @@ void URenderSystem::clearForLevelReloading()
     ParticleSubmitRequest request;
 
     m_swap_context.getLogicSwapData().m_particle_submit_request = request;
-}
-
-void URenderSystem::setRenderPipelineType(RENDER_PIPELINE_TYPE pipeline_type)
-{
-    m_render_pipeline_type = pipeline_type;
 }
 
 void URenderSystem::initializeUIRenderBackend(WindowUI* window_ui)
@@ -278,11 +264,13 @@ void URenderSystem::processSwapData()
 
             for (size_t part_index = 0; part_index < gobject.getObjectParts().size(); part_index++)
             {
+                //获取gameobject的数据
                 const auto&      game_object_part = gobject.getObjectParts()[part_index];
                 GameObjectPartId part_id          = {gobject.getId(), part_index};
 
                 bool is_entity_in_scene = m_render_scene->getInstanceIdAllocator().hasElement(part_id);
 
+                //构造渲染用actor
                 RenderEntity render_entity;
                 render_entity.m_instance_id =
                     static_cast<uint32_t>(m_render_scene->getInstanceIdAllocator().allocGuid(part_id));

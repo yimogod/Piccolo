@@ -17,7 +17,7 @@ namespace Piccolo
 class WindowSystem;
 class RHI;
 class RenderResourceBase;
-class RenderPipelineBase;
+class URenderPipelineBase;
 class RenderScene;
 class RenderCamera;
 class WindowUI;
@@ -54,7 +54,6 @@ public:
     std::shared_ptr<RenderCamera> getRenderCamera() const;
     std::shared_ptr<RHI>          getRHI() const;
 
-    void      setRenderPipelineType(RENDER_PIPELINE_TYPE pipeline_type);
     void      initializeUIRenderBackend(WindowUI* window_ui);
     void      updateEngineContentViewport(float offset_x, float offset_y, float width, float height);
     uint32_t  getGuidOfPickedMesh(const Vector2& picked_uv);
@@ -71,15 +70,13 @@ public:
     void clearForLevelReloading();
 
 private:
-    RENDER_PIPELINE_TYPE m_render_pipeline_type {RENDER_PIPELINE_TYPE::DEFERRED_PIPELINE};
-
     RenderSwapContext m_swap_context;
 
     std::shared_ptr<RHI>                m_rhi;
     std::shared_ptr<RenderCamera>       m_render_camera;
     std::shared_ptr<RenderScene>        m_render_scene;
     std::shared_ptr<RenderResourceBase> m_render_resource;
-    std::shared_ptr<RenderPipelineBase> m_render_pipeline;
+    std::shared_ptr<URenderPipelineBase> m_render_pipeline;
 
     void processSwapData();
 };
