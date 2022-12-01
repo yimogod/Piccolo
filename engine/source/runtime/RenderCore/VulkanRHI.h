@@ -1,10 +1,10 @@
 #pragma once
 
-#include "rhi/VulkanBuffer.h"
-#include "rhi/VulkanRenderPass.h"
-#include "rhi/VulkanDescriptor.h"
-#include "rhi/VulkanPipeline.h"
-#include "rhi/VulkanFrameBuffer.h"
-#include "rhi/VulkanCommand.h"
-#include "rhi/VulkanSwapChain.h"
-#include "rhi/VulkanRHIUtility.h"
+#include "RHI/VulkanBuffer.h"
+#include "RHI/VulkanRenderPass.h"
+#include "RHI/VulkanDescriptor.h"
+#include "RHI/VulkanPipeline.h"
+#include "RHI/VulkanFrameBuffer.h"
+#include "RHI/VulkanCommand.h"
+#include "RHI/VulkanSwapChain.h"
+#include "RHI/VulkanRHIUtility.h"

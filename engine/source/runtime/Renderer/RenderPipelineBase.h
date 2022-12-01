@@ -18,6 +18,8 @@ namespace Piccolo
         std::shared_ptr<RenderResourceBase> render_resource;
     };
 
+    // 逻辑渲染管线. 由多个渲染Pass构成. 这个和vulkan的pipeline的概念不一样.
+    // vulkan的pipeline是针对某个subpass的. 相当于微管线;)
     class URenderPipelineBase
     {
         friend class URenderSystem;

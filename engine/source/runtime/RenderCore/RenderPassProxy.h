@@ -2,16 +2,22 @@
 
 #include "VulkanRHI.h"
 
-class FRenderFrame
+// 某一个pass的vulkan renderpass渲染数据的集合. 对应了
+// 一个(或3个)FrameBuffer
+// 一个RenderPass
+// 一套描述符集
+// 一套Vulkan管线
+class URenderPassPacket
 {
 public:
-    FRenderFrame() = default;
+    URenderPassPacket() = default;
 
     //方便调用, 提供了原始vk的接口
     VkPipeline& GetVkPipeline(uint32_t Index) { return Pipelines[Index].GetPipeline(); }
     VkPipelineLayout& GetVkPipelineLayout(uint32_t Index) { return Pipelines[Index].GetLayout(); }
     VkDescriptorSet& GetVkDescriptorSet(uint32_t Index) { return DescriptorSets[Index].GetDescriptorSet(); }
     VkDescriptorSetLayout& GetVkDescriptorLayout(uint32_t Index) { return DescriptorSets[Index].GetLayout(); }
+
     //针对一些简易情况, 比如只有一个pipeline, 一个描述符集. 可以直接获取第一个值
     VkPipeline& GetVkPipeline() { return Pipelines[0].GetPipeline(); }
     VkPipelineLayout& GetVkPipelineLayout() { return Pipelines[0].GetLayout(); }
