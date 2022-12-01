@@ -1,4 +1,4 @@
-#include "runtime/function/render/passes/directional_light_pass.h"
+#include "DirectionalLightPass.h"
 
 #include "runtime/function/render/render_helper.h"
 #include "runtime/function/render/render_mesh.h"
@@ -12,21 +12,22 @@
 
 namespace Piccolo
 {
-    void DirectionalLightShadowPass::initialize(const RenderPassInitInfo* init_info)
+    void UDirectionalLightShadowPass::initialize(const FRenderPassInitInfo* init_info)
     {
-        RenderPass::initialize(nullptr);
+        URenderPass::initialize(nullptr);
 
+        //根据之前的经验, 这几个创建是由顺序依赖的
         setupAttachments();
         setupRenderPass();
         setupFramebuffer();
         setupDescriptorSetLayout();
     }
-    void DirectionalLightShadowPass::postInitialize()
+    void UDirectionalLightShadowPass::postInitialize()
     {
         setupPipelines();
         setupDescriptorSet();
     }
-    void DirectionalLightShadowPass::preparePassData(std::shared_ptr<RenderResourceBase> render_resource)
+    void UDirectionalLightShadowPass::preparePassData(std::shared_ptr<RenderResourceBase> render_resource)
     {
         const RenderResource* vulkan_resource = static_cast<const RenderResource*>(render_resource.get());
         if (vulkan_resource)
@@ -35,8 +36,11 @@ namespace Piccolo
                 vulkan_resource->m_mesh_directional_light_shadow_perframe_storage_buffer_object;
         }
     }
-    void DirectionalLightShadowPass::draw() { drawModel(); }
-    void DirectionalLightShadowPass::setupAttachments()
+    void UDirectionalLightShadowPass::draw() { drawModel(); }
+
+    //创建帧缓存需要的所有附件. 针对本Pass, 用到了2个附件.
+    //一个是颜色, 一个是深度
+    void UDirectionalLightShadowPass::setupAttachments()
     {
         // color and depth
         m_framebuffer.attachments.resize(2);
@@ -83,7 +87,7 @@ namespace Piccolo
                                 1,
                                 m_framebuffer.attachments[1].view);
     }
-    void DirectionalLightShadowPass::setupRenderPass()
+    void UDirectionalLightShadowPass::setupRenderPass()
     {
         RHIAttachmentDescription attachments[2] = {};
 
@@ -151,7 +155,7 @@ namespace Piccolo
             throw std::runtime_error("create directional light shadow render pass");
         }
     }
-    void DirectionalLightShadowPass::setupFramebuffer()
+    void UDirectionalLightShadowPass::setupFramebuffer()
     {
         RHIImageView* attachments[2] = {m_framebuffer.attachments[0].view, m_framebuffer.attachments[1].view};
 
@@ -170,7 +174,7 @@ namespace Piccolo
             throw std::runtime_error("create directional light shadow framebuffer");
         }
     }
-    void DirectionalLightShadowPass::setupDescriptorSetLayout()
+    void UDirectionalLightShadowPass::setupDescriptorSetLayout()
     {
         m_descriptor_infos.resize(1);
 
@@ -220,7 +224,7 @@ namespace Piccolo
             throw std::runtime_error("create mesh directional light shadow global layout");
         }
     }
-    void DirectionalLightShadowPass::setupPipelines()
+    void UDirectionalLightShadowPass::setupPipelines()
     {
         m_render_pipelines.resize(1);
 
@@ -358,7 +362,7 @@ namespace Piccolo
 
         m_rhi->destroyShaderModule(vert_shader_module);
     }
-    void DirectionalLightShadowPass::setupDescriptorSet()
+    void UDirectionalLightShadowPass::setupDescriptorSet()
     {
         RHIDescriptorSetAllocateInfo mesh_directional_light_shadow_global_descriptor_set_alloc_info;
         mesh_directional_light_shadow_global_descriptor_set_alloc_info.sType =
@@ -452,7 +456,7 @@ namespace Piccolo
                                     0,
                                     NULL);
     }
-    void DirectionalLightShadowPass::drawModel()
+    void UDirectionalLightShadowPass::drawModel()
     {
         struct MeshNode
         {

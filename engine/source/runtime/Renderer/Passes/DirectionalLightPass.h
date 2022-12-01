@@ -1,7 +1,6 @@
 #pragma once
 
-#include "RenderCore/RenderPassPacket.h"
-#include "Renderer/RenderPass.h"`
+#include "Renderer/RenderPass.h"
 
 namespace Piccolo
 {

@@ -2,14 +2,13 @@
 
 #include "runtime/function/render/render_common.h"
 #include "RenderPassBase.h"
-#include "RenderCore/RenderPassPacket.h"
+#include "RenderCore/VulkanPassProxy.h"
 #include "runtime/function/render/render_resource.h"
 
 #include <vulkan/vulkan.h>
 
 #include <memory>
 #include <vector>
-
 
 
 
@@ -122,7 +121,7 @@ namespace Piccolo
 
     protected:
         // renderpass的vulkan数据
-        URenderPassPacket Packet;
+        UVulkanPassProxy Proxy;
     private:
     };
 } // namespace Piccolo
