@@ -26,6 +26,7 @@ struct FVulkanFrameBufferAttachment
 //framebuffer有两种使用情境
 //1是只有一个VkFrameBuffer, 在pioccolo中, 如果不做present, 一个足够
 //2是展示到屏幕, 因为用了3缓冲技术, 所以会有三个framebuffer
+//除了是VkFrameBuffer的封装外, 还缓存了自已用到的所有的附件
 class FVulkanFrameBuffer
 {
     friend class FVulkanCommandBuffer;
@@ -43,7 +44,7 @@ public:
     //获取当前正在使用的FrameBuffer
     VkFramebuffer& GetFrameBuffer() { return CachedFramebuffers[BufferIndex]; }
     //获取帧绑定, 描述符(VkDescriptorImageInfo)中会用到
-    FVulkanFrameBufferAttachment& GetAttachment(uint32_t Index) { return Attachments[Index]; }
+    FVulkanFrameBufferAttachment& GetAttachment(uint32_t Index) { return CachedAttachments[Index]; }
 
     //获取frame充满的viewport
     VkViewport GetFullViewport();
@@ -57,7 +58,7 @@ public:
     //添加普通的附件. 不包含SwapChain的imageview. 交换链的imageview要通过
     void AddFrameAttachment(FVulkanFrameBufferAttachment& Attachment);
 
-    void SetFrameAttachmentNum(uint32_t Num) { Attachments.resize(Num);}
+    void SetFrameAttachmentNum(uint32_t Num) { CachedAttachments.resize(Num); }
     void SetFrameAttachmentFormat(uint32_t Index, VkFormat Format);
     void SetFrameAttachmentView(uint32_t Index, const VkImageView& AttachmentView);
 
@@ -87,7 +88,7 @@ private:
 
     //标准情况下用到的所有的帧缓冲附件. 这个附件个数和描述符集数组(及RenderPass用到的所有的附件)所有用到的个数相同
     //我先这么理解吧. 附件仅用于Ps
-    std::vector<FVulkanFrameBufferAttachment> Attachments;
+    std::vector<FVulkanFrameBufferAttachment> CachedAttachments;
 
     //frame buffer对应的clear value
     std::vector<VkClearValue> ClearValues;

@@ -90,7 +90,7 @@ private:
     int32_t PreserveCount = 0;
     uint32_t PreserveIndex = 0;
 
-    VkSubpassDescription RawSubpass;
+    VkSubpassDescription VKSubpass;
 };
 
 //将子通道的依赖数组抽象为一个对象
@@ -132,17 +132,17 @@ class FVulkanRenderPass
 public:
     FVulkanRenderPass() = default;
 
-    FVulkanAttachmentDescription& GetAttachments() { return Attachments; }
+    FVulkanAttachmentDescription& GetAttachmentDesc() { return AttachmentDesc; }
 
     FVulkanSubPassDependency& GetDependency() { return Dependency; }
 
-    VkRenderPass& GetRawRenderPass() { return RawRenderPass; }
+    VkRenderPass& GetVKRenderPass() { return VKRenderPass; }
 
     //根据已经配置好的数据,创建vkRenderPass
     void SetupRenderPass(VkDevice Device);
 
     //设置附件个数
-    void SetAttachmentNum(uint32_t Num) { Attachments.SetAttachmentNum(Num); }
+    void SetAttachmentNum(uint32_t Num) { AttachmentDesc.SetAttachmentNum(Num); }
 
     //设置依赖个数
     void SetDependencyNum(uint32_t Num) { Dependency.SetDependencyNum(Num); }
@@ -154,7 +154,7 @@ public:
 
 protected:
     //本pass用到的所有的平铺的附件
-    FVulkanAttachmentDescription Attachments;
+    FVulkanAttachmentDescription AttachmentDesc;
 
     //用到的所有子通道
     std::vector<FVulkanSubPass> SubPasses;
@@ -163,5 +163,5 @@ protected:
     FVulkanSubPassDependency Dependency;
 
     //原生vk对象
-    VkRenderPass RawRenderPass {VK_NULL_HANDLE};
+    VkRenderPass VKRenderPass {VK_NULL_HANDLE};
 };

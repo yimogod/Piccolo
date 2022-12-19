@@ -60,7 +60,7 @@ void FVulkanCommandBuffer::BeginRenderPass(FVulkanFrameBuffer& FrameBuffer, FVul
 {
     VkRenderPassBeginInfo BeginInfo {};
     BeginInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    BeginInfo.renderPass        = RenderPass.RawRenderPass;
+    BeginInfo.renderPass        = RenderPass.VKRenderPass;
     BeginInfo.framebuffer       = FrameBuffer.GetFrameBuffer();
     BeginInfo.renderArea.offset = {0, 0};
     BeginInfo.renderArea.extent = VkExtent;

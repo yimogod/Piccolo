@@ -1,5 +1,6 @@
 #pragma once
 
+#include "function/render/interface/vulkan/vulkan_rhi.h"
 #include "runtime/function/render/interface/rhi.h"
 
 namespace Piccolo
@@ -27,7 +28,7 @@ namespace Piccolo
         virtual void initializeUIRenderBackend(WindowUI* window_ui);
 
     protected:
-        std::shared_ptr<RHI>                m_rhi;
+        std::shared_ptr<VulkanRHI>                m_rhi;
         std::shared_ptr<RenderResourceBase> m_render_resource;
     };
 } // namespace Piccolo

@@ -3,7 +3,7 @@
 #include "runtime/function/render/render_helper.h"
 #include "runtime/function/render/render_mesh.h"
 #include "runtime/function/render/interface/vulkan/vulkan_rhi.h"
-#include "runtime/function/render/interface/vulkan/vulkan_util.h"
+#include "runtime/function/render/render_common.h"
 
 #include <mesh_directional_light_shadow_frag.h>
 #include <mesh_directional_light_shadow_vert.h>
@@ -16,10 +16,15 @@ namespace Piccolo
     {
         URenderPass::initialize(nullptr);
 
+    	Proxy.FrameBuffer.Width  = s_directional_light_shadow_map_dimension;
+        Proxy.FrameBuffer.Height = s_directional_light_shadow_map_dimension;
+
         //根据之前的经验, 这几个创建是由顺序依赖的
         setupAttachments();
         setupRenderPass();
         setupFramebuffer();
+
+        //shader相关, 和后面的渲染管线有联系
         setupDescriptorSetLayout();
     }
     void UDirectionalLightShadowPass::postInitialize()
@@ -42,137 +47,131 @@ namespace Piccolo
     //一个是颜色, 一个是深度
     void UDirectionalLightShadowPass::setupAttachments()
     {
+        // 俩附件 颜色和深度
+
+        //颜色格式32位R
+        FVulkanFrameBufferAttachment Attachment_0;
+        Attachment_0.Format = VK_FORMAT_R32_SFLOAT;
+        Attachment_0.Width = Attachment_0.Height = Proxy.FrameBuffer.Height; //宽高一样
+        FVulkanRHIUtility::CreateFrameAttachment(
+            Attachment_0,
+            m_rhi->m_device,
+            m_rhi->m_physical_device,
+            VK_IMAGE_TILING_OPTIMAL,
+            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, //用于采样和Ps输出
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,                 //仅显卡可访问
+            VK_IMAGE_ASPECT_COLOR_BIT                              // Color Bit
+        );
+        Proxy.FrameBuffer.AddFrameAttachment(Attachment_0);
+
+        // depth
+        FVulkanFrameBufferAttachment Attachment_1;
+        Attachment_1.Format = (VkFormat)m_rhi->getDepthImageInfo().depth_image_format;
+        Attachment_1.Width = Attachment_1.Height = Proxy.FrameBuffer.Height;
+        FVulkanRHIUtility::CreateFrameAttachment(
+            Attachment_1,
+            m_rhi->m_device,
+            m_rhi->m_physical_device,
+            VK_IMAGE_TILING_OPTIMAL,
+            //用于深度附件和交换格式的中间buffer
+            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, //仅显卡可访问
+            VK_IMAGE_ASPECT_DEPTH_BIT            // Depth Bit
+        );
+        Proxy.FrameBuffer.AddFrameAttachment(Attachment_1);
+
+
+        ////////////////////////////// TODO 兼容代码  ///////////////////////
         // color and depth
         m_framebuffer.attachments.resize(2);
 
         // color
-        m_framebuffer.attachments[0].format = RHI_FORMAT_R32_SFLOAT;
-        m_rhi->createImage(s_directional_light_shadow_map_dimension,
-                           s_directional_light_shadow_map_dimension,
-                           m_framebuffer.attachments[0].format,
-                           RHI_IMAGE_TILING_OPTIMAL,
-                           RHI_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | RHI_IMAGE_USAGE_SAMPLED_BIT,
-                           RHI_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                           m_framebuffer.attachments[0].image,
-                           m_framebuffer.attachments[0].mem,
-                           0,
-                           1,
-                           1);
-        m_rhi->createImageView(m_framebuffer.attachments[0].image,
-                               m_framebuffer.attachments[0].format,
-                               RHI_IMAGE_ASPECT_COLOR_BIT,
-                               RHI_IMAGE_VIEW_TYPE_2D,
-                               1,
-                               1,
-                               m_framebuffer.attachments[0].view);
+        FVulkanFrameBufferAttachment Att1   = Proxy.FrameBuffer.GetAttachment(0);
+        m_framebuffer.attachments[0].format = (RHIFormat)Att1.Format;
+        
+        auto image = new VulkanImage();
+        image->setResource(Att1.Image);
+        m_framebuffer.attachments[0].image = image;
+
+        auto image_view = new VulkanImageView();
+        image_view->setResource(Att1.View);
+        m_framebuffer.attachments[0].view  = image_view;
+
+        auto memory = new VulkanDeviceMemory();
+        memory->setResource(Att1.Mem);
+        m_framebuffer.attachments[0].mem = memory;
+
 
         // depth
-        m_framebuffer.attachments[1].format = m_rhi->getDepthImageInfo().depth_image_format;
-        m_rhi->createImage(s_directional_light_shadow_map_dimension,
-                           s_directional_light_shadow_map_dimension,
-                           m_framebuffer.attachments[1].format,
-                           RHI_IMAGE_TILING_OPTIMAL,
-                           RHI_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | RHI_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT,
-                           RHI_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                           m_framebuffer.attachments[1].image,
-                           m_framebuffer.attachments[1].mem,
-                           0,
-                           1,
-                           1);
-         m_rhi->createImageView(m_framebuffer.attachments[1].image,
-                                m_framebuffer.attachments[1].format,
-                                RHI_IMAGE_ASPECT_DEPTH_BIT,
-                                RHI_IMAGE_VIEW_TYPE_2D,
-                                1,
-                                1,
-                                m_framebuffer.attachments[1].view);
+        FVulkanFrameBufferAttachment Att2   = Proxy.FrameBuffer.GetAttachment(1);
+        m_framebuffer.attachments[1].format = (RHIFormat)Att2.Format;
+
+        auto image2 = new VulkanImage();
+        image2->setResource(Att2.Image);
+        m_framebuffer.attachments[1].image = image2;
+
+        auto image_view2 = new VulkanImageView();
+        image_view2->setResource(Att2.View);
+        m_framebuffer.attachments[1].view = image_view2;
+
+        auto memory2 = new VulkanDeviceMemory();
+        memory->setResource(Att2.Mem);
+        m_framebuffer.attachments[1].mem = memory2;
     }
     void UDirectionalLightShadowPass::setupRenderPass()
     {
-        RHIAttachmentDescription attachments[2] = {};
+        //所有的renderpass用到了两个附件
+        Proxy.RenderPass.SetAttachmentNum(2);
+        auto& AttachDesc = Proxy.RenderPass.GetAttachmentDesc();
 
-        RHIAttachmentDescription& directional_light_shadow_color_attachment_description = attachments[0];
-        directional_light_shadow_color_attachment_description.format         = m_framebuffer.attachments[0].format;
-        directional_light_shadow_color_attachment_description.samples        = RHI_SAMPLE_COUNT_1_BIT;
-        directional_light_shadow_color_attachment_description.loadOp         = RHI_ATTACHMENT_LOAD_OP_CLEAR;
-        directional_light_shadow_color_attachment_description.storeOp        = RHI_ATTACHMENT_STORE_OP_STORE;
-        directional_light_shadow_color_attachment_description.stencilLoadOp  = RHI_ATTACHMENT_LOAD_OP_DONT_CARE;
-        directional_light_shadow_color_attachment_description.stencilStoreOp = RHI_ATTACHMENT_STORE_OP_DONT_CARE;
-        directional_light_shadow_color_attachment_description.initialLayout  = RHI_IMAGE_LAYOUT_UNDEFINED;
-        directional_light_shadow_color_attachment_description.finalLayout    = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        //阴影的颜色R16
+        AttachDesc.SetFormat(0, Proxy.FrameBuffer.GetAttachment(0).Format);
+        //这个附件会清理chip memory, 且将chip数据写入到system memory
+        AttachDesc.SetLoadAndStore(0, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE);
+        AttachDesc.SetLayout(0, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-        RHIAttachmentDescription& directional_light_shadow_depth_attachment_description = attachments[1];
-        directional_light_shadow_depth_attachment_description.format         = m_framebuffer.attachments[1].format;
-        directional_light_shadow_depth_attachment_description.samples        = RHI_SAMPLE_COUNT_1_BIT;
-        directional_light_shadow_depth_attachment_description.loadOp         = RHI_ATTACHMENT_LOAD_OP_CLEAR;
-        directional_light_shadow_depth_attachment_description.storeOp        = RHI_ATTACHMENT_STORE_OP_DONT_CARE;
-        directional_light_shadow_depth_attachment_description.stencilLoadOp  = RHI_ATTACHMENT_LOAD_OP_DONT_CARE;
-        directional_light_shadow_depth_attachment_description.stencilStoreOp = RHI_ATTACHMENT_STORE_OP_DONT_CARE;
-        directional_light_shadow_depth_attachment_description.initialLayout  = RHI_IMAGE_LAYOUT_UNDEFINED;
-        directional_light_shadow_depth_attachment_description.finalLayout =
-            RHI_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        //影子深度
+        AttachDesc.SetFormat(1, Proxy.FrameBuffer.GetAttachment(1).Format);
+        //深度的话,也会清理chip memory, 但不会回写到system memory
+        AttachDesc.SetLoadAndStore(1, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE);
+        AttachDesc.SetLayout(1, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-        RHISubpassDescription subpasses[1] = {};
+        Proxy.RenderPass.SetSubPassNum(1);
+        FVulkanSubPass& SubPass = Proxy.RenderPass.GetSubPass(0);
 
-        RHIAttachmentReference shadow_pass_color_attachment_reference {};
-        shadow_pass_color_attachment_reference.attachment =
-            &directional_light_shadow_color_attachment_description - attachments;
-        shadow_pass_color_attachment_reference.layout = RHI_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        //两个附件, 一个ColorAttachment(输出), 一个DepthAttachment(深度)
+        SubPass.SetReferenceNum(0, 1, 1);
+        SubPass.SetColorReference(0, 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        SubPass.SetDepthReference(1);
+        SubPass.CreateSubPass();
 
-        RHIAttachmentReference shadow_pass_depth_attachment_reference {};
-        shadow_pass_depth_attachment_reference.attachment =
-            &directional_light_shadow_depth_attachment_description - attachments;
-        shadow_pass_depth_attachment_reference.layout = RHI_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        Proxy.RenderPass.SetDependencyNum(1);
+        auto& Dependency = Proxy.RenderPass.GetDependency();
+        Dependency.SetSubpass(0, 0, VK_SUBPASS_EXTERNAL);
+        Dependency.SetStageMask(
+            0,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, //从上个管道输出最终颜色值
+            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT); //管道中的最后一个阶段，其中所有命令生成的操作完成执行
+        Dependency.SetAccessMask(0,
+                                 VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, // STORE_OP_STORE?
+                                 0);
+        Dependency.SetFlag(0, 0); // NOT BY REGION
 
-        RHISubpassDescription& shadow_pass   = subpasses[0];
-        shadow_pass.pipelineBindPoint       = RHI_PIPELINE_BIND_POINT_GRAPHICS;
-        shadow_pass.colorAttachmentCount    = 1;
-        shadow_pass.pColorAttachments       = &shadow_pass_color_attachment_reference;
-        shadow_pass.pDepthStencilAttachment = &shadow_pass_depth_attachment_reference;
+        Proxy.RenderPass.SetupRenderPass(m_rhi->m_device);
 
-        RHISubpassDependency dependencies[1] = {};
-
-        RHISubpassDependency& lighting_pass_dependency = dependencies[0];
-        lighting_pass_dependency.srcSubpass           = 0;
-        lighting_pass_dependency.dstSubpass           = RHI_SUBPASS_EXTERNAL;
-        lighting_pass_dependency.srcStageMask         = RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        lighting_pass_dependency.dstStageMask         = RHI_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-        lighting_pass_dependency.srcAccessMask        = RHI_ACCESS_COLOR_ATTACHMENT_WRITE_BIT; // STORE_OP_STORE
-        lighting_pass_dependency.dstAccessMask        = 0;
-        lighting_pass_dependency.dependencyFlags      = 0; // NOT BY REGION
-
-        RHIRenderPassCreateInfo renderpass_create_info {};
-        renderpass_create_info.sType           = RHI_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        renderpass_create_info.attachmentCount = (sizeof(attachments) / sizeof(attachments[0]));
-        renderpass_create_info.pAttachments    = attachments;
-        renderpass_create_info.subpassCount    = (sizeof(subpasses) / sizeof(subpasses[0]));
-        renderpass_create_info.pSubpasses      = subpasses;
-        renderpass_create_info.dependencyCount = (sizeof(dependencies) / sizeof(dependencies[0]));
-        renderpass_create_info.pDependencies   = dependencies;
-
-        if (RHI_SUCCESS != m_rhi->createRenderPass(&renderpass_create_info, m_framebuffer.render_pass))
-        {
-            throw std::runtime_error("create directional light shadow render pass");
-        }
+        //TODO 兼容旧引擎
+		auto pRenderPass = new VulkanRenderPass();
+        pRenderPass->setResource(Proxy.RenderPass.GetVKRenderPass());
+        m_framebuffer.render_pass = pRenderPass;
     }
     void UDirectionalLightShadowPass::setupFramebuffer()
     {
-        RHIImageView* attachments[2] = {m_framebuffer.attachments[0].view, m_framebuffer.attachments[1].view};
+        //使用initialize方法中手动创建的两个image view. 即自己已存的两个view
+        Proxy.FrameBuffer.CreateFrameBuffer(m_rhi->m_device, Proxy.RenderPass.GetVKRenderPass());
 
-        RHIFramebufferCreateInfo framebuffer_create_info {};
-        framebuffer_create_info.sType           = RHI_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        framebuffer_create_info.flags           = 0U;
-        framebuffer_create_info.renderPass      = m_framebuffer.render_pass;
-        framebuffer_create_info.attachmentCount = (sizeof(attachments) / sizeof(attachments[0]));
-        framebuffer_create_info.pAttachments    = attachments;
-        framebuffer_create_info.width           = s_directional_light_shadow_map_dimension;
-        framebuffer_create_info.height          = s_directional_light_shadow_map_dimension;
-        framebuffer_create_info.layers          = 1;
-
-        if (RHI_SUCCESS != m_rhi->createFramebuffer(&framebuffer_create_info, m_framebuffer.framebuffer))
-        {
-            throw std::runtime_error("create directional light shadow framebuffer");
-        }
+        //TODO 兼容旧引擎
+    	m_framebuffer.framebuffer = new VulkanFramebuffer();
+        ((VulkanFramebuffer*)m_framebuffer.framebuffer)->setResource(Proxy.FrameBuffer.GetFrameBuffer());
     }
     void UDirectionalLightShadowPass::setupDescriptorSetLayout()
     {
@@ -362,6 +361,7 @@ namespace Piccolo
 
         m_rhi->destroyShaderModule(vert_shader_module);
     }
+    //这里的描述符集的创建实际上是把write和描述符集绑定起来
     void UDirectionalLightShadowPass::setupDescriptorSet()
     {
         RHIDescriptorSetAllocateInfo mesh_directional_light_shadow_global_descriptor_set_alloc_info;

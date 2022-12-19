@@ -29,6 +29,11 @@ void FVulkanAttachmentDescription::SetFormat(uint32_t AttachmentIndex, VkFormat 
 
 void FVulkanAttachmentDescription::SetLoadAndStore(uint32_t AttachmentIndex, VkAttachmentLoadOp LoadOp, VkAttachmentStoreOp StoreOp)
 {
+    //LOAD_OP_LOAD：从system加载Attachment到Tile(即chip memory)
+    //LOAD_OP_CLEAR：清理Tile缓冲区(chip memory)的数据
+    //LOAD_OP_DONT_CARE：不对Tile缓冲区的数据做任何操作，通常用于Tile内的数据会被全部重新，效率高于LOAD_OP_CLEAR。
+    //以上3个标记执行的效率：LOAD_OP_DONT_CARE > LOAD_OP_CLEAR > LOAD_OP_LOAD
+
     //load op代表从system memory到chip memory
     //store op代表从chip memory到system memory
 
@@ -98,36 +103,36 @@ void FVulkanSubPass::CreateSubPass()
     //input attachment是输入的imageview
     //color就是输出的image view
 
-    RawSubpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    RawSubpass.inputAttachmentCount = 0;
-    RawSubpass.pInputAttachments = nullptr;
-    RawSubpass.colorAttachmentCount = 0;
-    RawSubpass.pColorAttachments = nullptr;
-    RawSubpass.preserveAttachmentCount = 0;
-    RawSubpass.pPreserveAttachments    = nullptr;
-    RawSubpass.pDepthStencilAttachment = nullptr;
+    VKSubpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    VKSubpass.inputAttachmentCount = 0;
+    VKSubpass.pInputAttachments = nullptr;
+    VKSubpass.colorAttachmentCount = 0;
+    VKSubpass.pColorAttachments = nullptr;
+    VKSubpass.preserveAttachmentCount = 0;
+    VKSubpass.pPreserveAttachments    = nullptr;
+    VKSubpass.pDepthStencilAttachment = nullptr;
 
     if(InputReferences.size() > 0)
     {
-        RawSubpass.inputAttachmentCount = InputReferences.size();
-        RawSubpass.pInputAttachments = InputReferences.data();
+        VKSubpass.inputAttachmentCount = InputReferences.size();
+        VKSubpass.pInputAttachments = InputReferences.data();
     }
 
     if(ColorReferences.size() > 0)
     {
-        RawSubpass.colorAttachmentCount = ColorReferences.size();
-        RawSubpass.pColorAttachments = ColorReferences.data();
+        VKSubpass.colorAttachmentCount = ColorReferences.size();
+        VKSubpass.pColorAttachments = ColorReferences.data();
     }
 
     if(DepthReferences.size() > 0)
     {
-        RawSubpass.pDepthStencilAttachment = DepthReferences.data();
+        VKSubpass.pDepthStencilAttachment = DepthReferences.data();
     }
 
     if(PreserveCount > 0)
     {
-        RawSubpass.preserveAttachmentCount = PreserveCount;
-        RawSubpass.pPreserveAttachments = &PreserveIndex;
+        VKSubpass.preserveAttachmentCount = PreserveCount;
+        VKSubpass.pPreserveAttachments = &PreserveIndex;
     }
 
 
@@ -181,20 +186,20 @@ void FVulkanRenderPass::SetupRenderPass(VkDevice Device)
     VkSubpasses.resize(SubPasses.size());
     for(uint32_t i = 0; i < SubPasses.size(); i++)
     {
-        VkSubpasses[i] = SubPasses[i].RawSubpass;
+        VkSubpasses[i] = SubPasses[i].VKSubpass;
     }
 
-    VkRenderPassCreateInfo renderpass_create_info {};
-    renderpass_create_info.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    renderpass_create_info.attachmentCount = Attachments.GetAttachmentNum();
-    renderpass_create_info.pAttachments    = Attachments.Attachments.data();
-    renderpass_create_info.subpassCount    = SubPasses.size();
-    renderpass_create_info.pSubpasses      = VkSubpasses.data();
-    renderpass_create_info.dependencyCount = Dependency.GetDependencyNum();
-    renderpass_create_info.pDependencies   = Dependency.Dependencies.data();
+    VkRenderPassCreateInfo CreateInfo {};
+    CreateInfo.sType                       = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    CreateInfo.attachmentCount             = AttachmentDesc.GetAttachmentNum();
+    CreateInfo.pAttachments                = AttachmentDesc.Attachments.data();
+    CreateInfo.subpassCount                = SubPasses.size();
+    CreateInfo.pSubpasses                  = VkSubpasses.data();
+    CreateInfo.dependencyCount             = Dependency.GetDependencyNum();
+    CreateInfo.pDependencies               = Dependency.Dependencies.data();
 
     //vulkan创建render pass
-    if (vkCreateRenderPass(Device, &renderpass_create_info, nullptr, &RawRenderPass) !=
+    if (vkCreateRenderPass(Device, &CreateInfo, nullptr, &VKRenderPass) !=
         VK_SUCCESS)
     {
         throw std::runtime_error("failed to create render pass");

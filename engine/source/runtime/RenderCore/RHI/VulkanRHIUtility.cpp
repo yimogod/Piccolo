@@ -108,6 +108,8 @@ void FVulkanRHIUtility::CreateImage(VkDevice Device,
 
     return ImageView;
 }
+
+//TODO 参数太多。 想办法放入FVulkanFrameBufferAttachment成员方法一些
  void FVulkanRHIUtility::CreateFrameAttachment(FVulkanFrameBufferAttachment& OutAttachment,
                                                VkDevice                      Device,
                                                VkPhysicalDevice              Gpu,
