@@ -9,6 +9,8 @@
 #include <memory>
 #include <optional>
 
+#include "RenderCore/VulkanProxy.h"
+
 namespace Piccolo
 {
 
@@ -72,6 +74,7 @@ public:
 private:
     RenderSwapContext m_swap_context;
 
+    std::shared_ptr<UVulkanProxy>       Vulkan;
     std::shared_ptr<RHI>                m_rhi;
     std::shared_ptr<RenderCamera>       m_render_camera;
     std::shared_ptr<RenderScene>        m_render_scene;

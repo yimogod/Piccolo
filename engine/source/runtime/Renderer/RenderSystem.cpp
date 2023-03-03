@@ -43,6 +43,8 @@ void URenderSystem::initialize(FRenderSystemInitInfo init_info)
     //初始化 rhi
     m_rhi = std::make_shared<VulkanRHI>();
     m_rhi->initialize(rhi_init_info);
+    Vulkan->Device = m_rhi->m_device;
+    Vulkan->Gpu    = m_rhi->m_physical_device;
 
     // global rendering resource
     GlobalRenderingRes global_rendering_res;

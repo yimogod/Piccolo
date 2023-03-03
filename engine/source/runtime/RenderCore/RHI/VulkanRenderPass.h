@@ -17,7 +17,7 @@ class FVulkanRenderPass;
 
 //这些附件也需要和FrameBuffer中的帧缓冲附件对应起来, 其实根儿里面指向的都是同样的ImageView
 
-//ColorAttachmentOutput是单独的shader阶段. 在PS阶段之后
+//ColorAttachmentOutput是单独的shader阶段. 在PS阶段之后. 可以理解为PS输出到了RT
 class FVulkanAttachmentDescription
 {
     friend class FVulkanRenderPass;
@@ -75,7 +75,7 @@ public:
     void SetPreserveReference(uint32_t InAttachmentCount, uint32_t InAttachmentIndex);
 
     //填充完Reference, 创建SubPass对象
-    void CreateSubPass();
+    void SetupSubPass();
 private:
     //subpass的ColorAttachment
     std::vector <VkAttachmentReference> ColorReferences;
@@ -139,7 +139,7 @@ public:
     VkRenderPass& GetVKRenderPass() { return VKRenderPass; }
 
     //根据已经配置好的数据,创建vkRenderPass
-    void SetupRenderPass(VkDevice Device);
+    void CreateRenderPass(VkDevice Device);
 
     //设置附件个数
     void SetAttachmentNum(uint32_t Num) { AttachmentDesc.SetAttachmentNum(Num); }

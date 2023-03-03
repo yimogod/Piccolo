@@ -2,6 +2,7 @@
 
 #include "runtime/function/render/render_common.h"
 #include "RenderPassBase.h"
+#include "RenderCore/VulkanProxy.h"
 #include "RenderCore/VulkanPassProxy.h"
 #include "runtime/function/render/render_resource.h"
 
@@ -9,6 +10,7 @@
 
 #include <memory>
 #include <vector>
+
 
 
 
@@ -122,6 +124,7 @@ namespace Piccolo
     protected:
         // renderpass的vulkan数据
         UVulkanPassProxy Proxy;
+        std::shared_ptr<UVulkanProxy> Vulkan;
     private:
     };
 } // namespace Piccolo

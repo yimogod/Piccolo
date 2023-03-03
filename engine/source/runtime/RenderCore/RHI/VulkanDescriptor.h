@@ -7,8 +7,8 @@ class FVulkanDescriptorSet;
 
 //描述符布局, 就是一对shader, 包含所有的vs ps所需的所有的uniform/texture的槽位信息
 //简单的不太对的总结一下. 描述符集和Shader密切相关.描述的是shader的buffer的格式和槽位信息
-//而pipeline布局其实是由描述符布局构成. 之前也可以认为pipeline和shader就是一一对应的
-//简单点理解, 一个描述符就是一个帮i的那个. Layout布局的是绑定, 也就是说描述符集布局的对象是描述符
+//而pipeline布局其实是由描述符布局数组构成. 之前也可以认为pipeline和shader就是一一对应的
+//简单点理解, 一个描述符就是shader用的数据的描述. Layout布局的是绑定, 也就是说描述符集布局的对象是描述符
 
 //而附件虽然也指向同样的imageview, 但概念上更服务于subpass
 
@@ -23,7 +23,7 @@ public:
     //共需要多少个绑定或者槽位
     void SetBindingNum(uint32_t Num);
 
-    //设置第BindingIndex的数据
+    //设置第BindingIndex的描述符数据
     void SetBinding(uint32_t BindingIndex, VkDescriptorType DescriptorType, VkShaderStageFlags StageFlags);
 
     //根据传入的bindling参数, 调用vulkan api创建 描述符布局

@@ -97,7 +97,7 @@ void FVulkanSubPass::SetPreserveReference(uint32_t InAttachmentCount, uint32_t I
     PreserveIndex = InAttachmentIndex;
 }
 
-void FVulkanSubPass::CreateSubPass()
+void FVulkanSubPass::SetupSubPass()
 {
     //VkSubpassDescription 很重要. 决定subpass输出到哪儿!!!
     //input attachment是输入的imageview
@@ -179,7 +179,7 @@ void FVulkanSubPassDependency::SetAccessMask(uint32_t      DependencyIndex,
 }
 
 
-void FVulkanRenderPass::SetupRenderPass(VkDevice Device)
+void FVulkanRenderPass::CreateRenderPass(VkDevice Device)
 {
     //组装subpass
     std::vector<VkSubpassDescription> VkSubpasses;

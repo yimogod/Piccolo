@@ -10,7 +10,7 @@ public:
     UVulkanProxy() = default;
 
     //方便调用, 提供了原始vk的接口
-
     VkDevice Device;
     VkPhysicalDevice Gpu;
+    VkDescriptorPool DescriptorPool;
 };
