@@ -70,7 +70,8 @@ public:
 
     //根据传入的数据初始化Staging Buffer
     //BlockNum是在用的时候, 分了多少块. 比如3缓冲, 就是三块.
-    void Initialize(uint64_t TotalBufferSize, uint32_t BlockNum);
+    //InMinOffsetAlign查找数据块时的最小单位
+    void Initialize(uint64_t TotalBufferSize, uint32_t BlockNum, uint32_t InMinOffsetAlign);
 
     //根据参数创建实际的Buffer
     void CreateBuffer(VkDevice& Device, VkPhysicalDevice& Gpu);
@@ -87,12 +88,13 @@ public:
     //4. 返回的是第一步End地址对齐后的偏移和以及此偏移强转的对象
     template<typename T>
     T& GetObjectAtEndAddress(uint32_t BlockIndex, uint32_t EndMoveOffset, uint32_t& OutAlignOffset);
-
+private:
     //显存对齐的最小数值, 对应gpu的minStorageBufferOffsetAlignment
     uint32_t MinOffsetAlignment {256};
+
     //显存的最大Range, 对应gpu的maxStorageBufferRange. 默认值128M
-    uint32_t MaxRange{1 << 27};;
-private:
+    uint32_t MaxRange {1 << 27};
+
     //整个内存分块的
     std::vector<BufferBlock> Blocks;
 };

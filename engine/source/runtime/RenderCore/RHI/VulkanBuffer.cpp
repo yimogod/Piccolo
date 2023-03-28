@@ -74,10 +74,12 @@ void FVulkanStagingBuffer::UnmapMemory(VkDevice& Device)
 {
     vkUnmapMemory(Device, RawBufferMemory);
 }
-void FVulkanStagingBuffer_Storage::Initialize(uint64_t TotalBufferSize, uint32_t BlockNum)
+void FVulkanStagingBuffer_Storage::Initialize(uint64_t TotalBufferSize, uint32_t BlockNum, uint32_t InMinOffsetAlign)
 {
     BufferSize = TotalBufferSize;
     Blocks.resize(BlockNum);
+    MinOffsetAlignment = InMinOffsetAlign;
+
     //分配三块内存
     for (uint32_t i = 0; i < BlockNum; ++i)
     {

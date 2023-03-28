@@ -12,8 +12,25 @@ class FVulkanDescriptorSet;
 
 //而附件虽然也指向同样的imageview, 但概念上更服务于subpass
 
-//粗略理解. imageview作为shader的输入是描述符集. 作为shader的输出是附件!!!
+//粗略理解. imageview作为shader的输入是描述符集, 及shader使用的资源. 作为shader的输出是附件!!!
 //所以目前看到的代码附件都是在PS里面有用
+
+
+//纹理   \
+//采样器   \
+//纹理       描述集布局1
+//缓冲区   /           \
+//缓冲区  /             \
+//                       管线布局
+//纹理    \             /
+//纹理     \           /
+//纹理      描述集布局2
+//采样器  /
+//采样器 /
+
+//在shader中 layout()声明符有两类. 
+// 1. layout(set = 0, binding = 0)表示的是描述符集绑定的资源
+// 2. layout(location = 0)表示的vs/ps的输入和输出的数据
 class FVulkanDescriptorLayout
 {
     friend FVulkanDescriptorSet;
@@ -33,7 +50,7 @@ private:
     //描述符集布局
     VkDescriptorSetLayout RawDescriptorSetLayout = VK_NULL_HANDLE;
 
-    //描述符绑定布局槽点
+    //描述符绑定布局槽点, 每个着色器可访问的资源都具有一个绑定序号. 资源有image, buffer, sampler, input attachment等等
     std::vector<VkDescriptorSetLayoutBinding> RawBindings;
 };
 
@@ -60,8 +77,6 @@ private:
     //描述符集对应的写入器数组
     std::vector<VkWriteDescriptorSet> Writes;
 
-
-
     //缓冲创建writer的中间数据. 否则会被提前释放
     uint32_t BufferIndex = 0;
     std::vector <VkDescriptorBufferInfo> BufferInfos;
@@ -73,6 +88,9 @@ private:
 //描述符集, 这里默认了一个描述符集对应一个布局, Set:Layout = 1:1
 //封装了原生描述符集, 描述符布局和写入器
 //提供了更新数据的接口
+//shader通过描述符集来访问资源, 描述符集表示绑定到管线的资源的集合
+
+//要访问描述符集附带的资源，描述符集必须要绑定到命令缓冲区
 class FVulkanDescriptorSet
 {
 public:

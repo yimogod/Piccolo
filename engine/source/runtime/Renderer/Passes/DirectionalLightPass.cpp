@@ -281,7 +281,6 @@ namespace Piccolo
         VkDescriptorPool      VPool = Pool->getResource();
         Set.CreateDescriptorSet(m_rhi->m_device, VPool);
 
-
         // Write和binding的数量一样
         // 创建了3个DescBufferInfo, 对应 VS shader的3个uniform(buffer), 奇怪的是在shader中没有uniform的标签
         
@@ -322,6 +321,7 @@ namespace Piccolo
             uint32_t         joint_count {0};
         };
 
+        //合批后的数据.
         std::map<VulkanPBRMaterial*, std::map<VulkanMesh*, std::vector<MeshNode>>>
             directional_light_mesh_drawcall_batch;
 
@@ -342,68 +342,55 @@ namespace Piccolo
             mesh_nodes.push_back(temp);
         }
 
+        VkCommandBuffer RawCommandBuffer;
+        RawCommandBuffer = ((VulkanCommandBuffer*)m_rhi->m_current_command_buffer)->getResource();
+        FVulkanCommandBuffer CB = FVulkanCommandBuffer(RawCommandBuffer);
         // Directional Light Shadow begin pass
         {
-            RHIRenderPassBeginInfo renderpass_begin_info {};
-            renderpass_begin_info.sType             = RHI_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderpass_begin_info.renderPass        = m_framebuffer.render_pass;
-            renderpass_begin_info.framebuffer       = m_framebuffer.framebuffer;
-            renderpass_begin_info.renderArea.offset = {0, 0};
-            renderpass_begin_info.renderArea.extent = {s_directional_light_shadow_map_dimension,
-                                                       s_directional_light_shadow_map_dimension};
-
-            RHIClearValue clear_values[2];
-            clear_values[0].color                 = {1.0f};
-            clear_values[1].depthStencil          = {1.0f, 0};
-            renderpass_begin_info.clearValueCount = (sizeof(clear_values) / sizeof(clear_values[0]));
-            renderpass_begin_info.pClearValues    = clear_values;
-
-            m_rhi->cmdBeginRenderPassPFN(m_rhi->getCurrentCommandBuffer(), &renderpass_begin_info, RHI_SUBPASS_CONTENTS_INLINE);
+            Proxy.FrameBuffer.SetClearColorValue(0, {1.0f});
+            Proxy.FrameBuffer.SetClearDepthValue(1, {1.0f, 0});
+            CB.BeginRenderPass(Proxy.FrameBuffer, Proxy.RenderPass, Proxy.FrameBuffer.GetFullExtent());
 
             float color[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
             m_rhi->pushEvent(m_rhi->getCurrentCommandBuffer(), "Directional Light Shadow", color);
         }
 
-        // Mesh
+        // 光源阴影可用
         if (m_rhi->isPointLightShadowEnabled())
         {
             float color[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
             m_rhi->pushEvent(m_rhi->getCurrentCommandBuffer(), "Mesh", color);
 
-            m_rhi->cmdBindPipelinePFN(m_rhi->getCurrentCommandBuffer(), RHI_PIPELINE_BIND_POINT_GRAPHICS, m_render_pipelines[0].pipeline);
 
-            // perframe storage buffer
-            uint32_t perframe_dynamic_offset =
-                roundUp(m_global_render_resource->_storage_buffer
-                            ._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()],
-                        m_global_render_resource->_storage_buffer._min_storage_buffer_offset_alignment);
-            m_global_render_resource->_storage_buffer
-                ._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()] =
-                perframe_dynamic_offset + sizeof(MeshPerframeStorageBufferObject);
-            assert(m_global_render_resource->_storage_buffer
-                       ._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()] <=
-                   (m_global_render_resource->_storage_buffer
-                        ._global_upload_ringbuffers_begin[m_rhi->getCurrentFrameIndex()] +
-                    m_global_render_resource->_storage_buffer
-                        ._global_upload_ringbuffers_size[m_rhi->getCurrentFrameIndex()]));
+            CB.BindPipeline(Proxy.GetVkPipeline());
 
-            MeshDirectionalLightShadowPerframeStorageBufferObject& perframe_storage_buffer_object =
-                (*reinterpret_cast<MeshDirectionalLightShadowPerframeStorageBufferObject*>(
-                    reinterpret_cast<uintptr_t>(
-                        m_global_render_resource->_storage_buffer._global_upload_ringbuffer_memory_pointer) +
-                    perframe_dynamic_offset));
-            perframe_storage_buffer_object = m_mesh_directional_light_shadow_perframe_storage_buffer_object;
+            FVulkanStagingBuffer_Storage StorageBuffer;
+            StorageBuffer.Data = m_global_render_resource->_storage_buffer._global_upload_ringbuffer_memory_pointer;
+            StorageBuffer.Initialize(1024 * 1024 * 128, 3, 256);
+
+
+            // IMPORTANT 赋值平行光的MVP
+            uint32_t perframe_dynamic_offset = 0;
+            MeshDirectionalLightShadowPerframeStorageBufferObject& Obj =
+                StorageBuffer.GetObjectAtEndAddress<MeshDirectionalLightShadowPerframeStorageBufferObject>(
+                    m_rhi->m_current_frame_index,
+                    sizeof(MeshPerframeStorageBufferObject),
+                    perframe_dynamic_offset);
+            Obj = m_mesh_directional_light_shadow_perframe_storage_buffer_object;
 
             for (auto& [material, mesh_instanced] : directional_light_mesh_drawcall_batch)
             {
                 // TODO: render from near to far
 
+                //从这里看, 并没有进行模型的合并. 而且把材质球一样的模型放在一起渲染, 减少状态切换
+                //感觉描述符布局应该是材质球的成员变量, 而不适合mesh的
                 for (auto& [mesh, mesh_nodes] : mesh_instanced)
                 {
                     uint32_t total_instance_count = static_cast<uint32_t>(mesh_nodes.size());
                     if (total_instance_count > 0)
                     {
                         // bind per mesh
+                        //总共只有1个集合. 而第一个集合的索引是1, 会不会有问题???
                         m_rhi->cmdBindDescriptorSetsPFN(m_rhi->getCurrentCommandBuffer(),
                                                         RHI_PIPELINE_BIND_POINT_GRAPHICS,
                                                         m_render_pipelines[0].layout,
@@ -418,12 +405,15 @@ namespace Piccolo
                         m_rhi->cmdBindVertexBuffersPFN(m_rhi->getCurrentCommandBuffer(), 0, 1, vertex_buffers, offsets);
                         m_rhi->cmdBindIndexBufferPFN(m_rhi->getCurrentCommandBuffer(), mesh->mesh_index_buffer, 0, RHI_INDEX_TYPE_UINT16);
 
+                        //平行光阴影, 每帧绘制64次DC
                         uint32_t drawcall_max_instance_count =
                             (sizeof(MeshDirectionalLightShadowPerdrawcallStorageBufferObject::mesh_instances) /
                              sizeof(MeshDirectionalLightShadowPerdrawcallStorageBufferObject::mesh_instances[0]));
+                        //按64取整. 变为了64的倍数
                         uint32_t drawcall_count =
                             roundUp(total_instance_count, drawcall_max_instance_count) / drawcall_max_instance_count;
 
+                        //不是. 剩下呢? 不绘制了
                         for (uint32_t drawcall_index = 0; drawcall_index < drawcall_count; ++drawcall_index)
                         {
                             uint32_t current_instance_count =
@@ -433,6 +423,8 @@ namespace Piccolo
                                     drawcall_max_instance_count;
 
                             // perdrawcall storage buffer
+                            // 又重复利用了. Stage内存的开始部分. 64个model的mvp
+                            // 开始通过不断的偏移End值, 往buffer写值
                             uint32_t perdrawcall_dynamic_offset =
                                 roundUp(m_global_render_resource->_storage_buffer
                                             ._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()],
@@ -454,6 +446,8 @@ namespace Piccolo
                                         reinterpret_cast<uintptr_t>(m_global_render_resource->_storage_buffer
                                                                         ._global_upload_ringbuffer_memory_pointer) +
                                         perdrawcall_dynamic_offset));
+
+                            //设置每个instance的model view matrix
                             for (uint32_t i = 0; i < current_instance_count; ++i)
                             {
                                 perdrawcall_storage_buffer_object.mesh_instances[i].model_matrix =
@@ -476,6 +470,8 @@ namespace Piccolo
                             }
                             if (least_one_enable_vertex_blending)
                             {
+                                // 接着重复利用. Stage内存的开始部分
+                                // 开始通过不断的偏移End值, 往buffer写值
                                 per_drawcall_vertex_blending_dynamic_offset = roundUp(
                                     m_global_render_resource->_storage_buffer
                                         ._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()],

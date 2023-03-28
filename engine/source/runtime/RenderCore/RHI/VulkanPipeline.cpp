@@ -297,7 +297,7 @@ void FVulkanPipeline::CreateLayout(VkDevice& Device, std::vector<FVulkanDescript
 }
 void FVulkanPipeline::CreateLayout(VkDevice& Device, std::vector<VkDescriptorSetLayout>& DescriptorLayouts)
 {
-    //创建管线布局, 及这个Pipeline用到了多少个desc set.
+    //创建管线布局, 及这个Pipeline用到了多少个desc set layout.
     //于是有了layout(set = 1, binding = 2)
     VkPipelineLayoutCreateInfo CreateInfo {};
     CreateInfo.sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
