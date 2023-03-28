@@ -70,7 +70,9 @@ private:
     std::vector <VkDescriptorImageInfo> ImageInfos;
 };
 
-//描述符集, 这里默认了一个描述符集对应一个布局
+//描述符集, 这里默认了一个描述符集对应一个布局, Set:Layout = 1:1
+//封装了原生描述符集, 描述符布局和写入器
+//提供了更新数据的接口
 class FVulkanDescriptorSet
 {
 public:

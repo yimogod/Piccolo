@@ -58,7 +58,7 @@ namespace Piccolo
             m_rhi->m_device,
             m_rhi->m_physical_device,
             VK_IMAGE_TILING_OPTIMAL,
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, //用于采样和Ps输出
+            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, //用于采样和Ps输出--即shader的输入输出
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,                 //仅显卡可访问
             VK_IMAGE_ASPECT_COLOR_BIT                              // Color Bit
         );
@@ -148,7 +148,6 @@ namespace Piccolo
 
         Proxy.RenderPass.SetDependencyNum(1);
         auto& Dependency = Proxy.RenderPass.GetDependency();
-        //TODO 将依赖的方法放入RenderPass的类中
         Dependency.SetSubpass(0, 0, VK_SUBPASS_EXTERNAL);
         //就一个subpass, 依赖于之前pass的输出. 然后目标是自己的pass的输出
         Dependency.SetStageMask(
@@ -157,11 +156,13 @@ namespace Piccolo
             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT); //管道中的最后一个阶段，其中所有命令生成的操作完成执行
         //告知这个subpass会写颜色附件
         Dependency.SetAccessMask(0,
-                                 VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, // STORE_OP_STORE?
-                                 0);
+                                 VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, //通过PS输出向一个颜色附件写入数据
+                                 0); //不访问
         Dependency.SetFlag(0, 0); // NOT BY REGION
 
         Proxy.RenderPass.CreateRenderPass(m_rhi->m_device);
+
+
 
         //TODO 兼容旧引擎
 		auto pRenderPass = new VulkanRenderPass();
@@ -183,9 +184,9 @@ namespace Piccolo
         Proxy.DescriptorSets.resize(1);
 
         // 3个binding, 对应shader中的layout(set = 0, binding = 0/1/2)
-
         // VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC 可被动态写入的buffer, 允许单个set中的单个缓冲区高频地更新
-        // 3个set都用于顶点阶段
+        
+        // 3个set都用于顶点阶段, 在mesh_directional_light_shadow.vert中分别是mvp, meshinstance, joint_matrices(动画)
         auto& Set = Proxy.DescriptorSets[0];
         //都用于顶点shader
         Set.SetBindingNum(3);
@@ -200,61 +201,9 @@ namespace Piccolo
         m_descriptor_infos.resize(1);
         m_descriptor_infos[0].layout = new VulkanDescriptorSetLayout();
         ((VulkanDescriptorSetLayout*)m_descriptor_infos[0].layout)->setResource(Proxy.DescriptorSets[0].GetLayout());
-        m_descriptor_infos[0].descriptor_set = Proxy.DescriptorSets[0].GetDescriptorSet();
 
-
-
-
-
-
-
-        m_descriptor_infos.resize(1);
-
-        RHIDescriptorSetLayoutBinding mesh_directional_light_shadow_global_layout_bindings[3];
-
-        RHIDescriptorSetLayoutBinding& mesh_directional_light_shadow_global_layout_perframe_storage_buffer_binding =
-            mesh_directional_light_shadow_global_layout_bindings[0];
-        mesh_directional_light_shadow_global_layout_perframe_storage_buffer_binding.binding = 0;
-        mesh_directional_light_shadow_global_layout_perframe_storage_buffer_binding.descriptorType =
-            RHI_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
-        mesh_directional_light_shadow_global_layout_perframe_storage_buffer_binding.descriptorCount = 1;
-        mesh_directional_light_shadow_global_layout_perframe_storage_buffer_binding.stageFlags =
-            RHI_SHADER_STAGE_VERTEX_BIT;
-
-        RHIDescriptorSetLayoutBinding& mesh_directional_light_shadow_global_layout_perdrawcall_storage_buffer_binding =
-            mesh_directional_light_shadow_global_layout_bindings[1];
-        mesh_directional_light_shadow_global_layout_perdrawcall_storage_buffer_binding.binding = 1;
-        mesh_directional_light_shadow_global_layout_perdrawcall_storage_buffer_binding.descriptorType =
-            RHI_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
-        mesh_directional_light_shadow_global_layout_perdrawcall_storage_buffer_binding.descriptorCount = 1;
-        mesh_directional_light_shadow_global_layout_perdrawcall_storage_buffer_binding.stageFlags =
-            RHI_SHADER_STAGE_VERTEX_BIT;
-
-        RHIDescriptorSetLayoutBinding&
-            mesh_directional_light_shadow_global_layout_per_drawcall_vertex_blending_storage_buffer_binding =
-                mesh_directional_light_shadow_global_layout_bindings[2];
-        mesh_directional_light_shadow_global_layout_per_drawcall_vertex_blending_storage_buffer_binding.binding = 2;
-        mesh_directional_light_shadow_global_layout_per_drawcall_vertex_blending_storage_buffer_binding.descriptorType =
-            RHI_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
-        mesh_directional_light_shadow_global_layout_per_drawcall_vertex_blending_storage_buffer_binding
-            .descriptorCount = 1;
-        mesh_directional_light_shadow_global_layout_per_drawcall_vertex_blending_storage_buffer_binding.stageFlags =
-            RHI_SHADER_STAGE_VERTEX_BIT;
-
-        RHIDescriptorSetLayoutCreateInfo mesh_point_light_shadow_global_layout_create_info;
-        mesh_point_light_shadow_global_layout_create_info.sType = RHI_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        mesh_point_light_shadow_global_layout_create_info.pNext = NULL;
-        mesh_point_light_shadow_global_layout_create_info.flags = 0;
-        mesh_point_light_shadow_global_layout_create_info.bindingCount =
-            (sizeof(mesh_directional_light_shadow_global_layout_bindings) /
-             sizeof(mesh_directional_light_shadow_global_layout_bindings[0]));
-        mesh_point_light_shadow_global_layout_create_info.pBindings =
-            mesh_directional_light_shadow_global_layout_bindings;
-
-        if (RHI_SUCCESS != m_rhi->createDescriptorSetLayout(&mesh_point_light_shadow_global_layout_create_info, m_descriptor_infos[0].layout))
-        {
-            throw std::runtime_error("create mesh directional light shadow global layout");
-        }
+        m_descriptor_infos[0].descriptor_set = new VulkanDescriptorSet();
+        ((VulkanDescriptorSet*)m_descriptor_infos[0].descriptor_set)->setResource(Proxy.DescriptorSets[0].GetDescriptorSet());
     }
     void UDirectionalLightShadowPass::setupPipelines()
     {

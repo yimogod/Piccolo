@@ -27,6 +27,8 @@ struct FVulkanFrameBufferAttachment
 //1是只有一个VkFrameBuffer, 在pioccolo中, 如果不做present, 一个足够
 //2是展示到屏幕, 因为用了3缓冲技术, 所以会有三个framebuffer
 //除了是VkFrameBuffer的封装外, 还缓存了自已用到的所有的附件
+
+//TODO 将普通的FrameBuffer和PresentFrameBuffer拆分开?
 class FVulkanFrameBuffer
 {
     friend class FVulkanCommandBuffer;
@@ -86,8 +88,8 @@ private:
     // 自定义的ImageView, maincamerapass用到了7个.
     // 另外加上交换链所需的深度和swapchianimageview, 共9个给renderpas使用
 
-    //标准情况下用到的所有的帧缓冲附件. 这个附件个数和描述符集数组(及RenderPass用到的所有的附件)所有用到的个数相同
-    //我先这么理解吧. 附件仅用于Ps
+    //用到的所有的帧缓冲附件. 这个附件个数和描述符集数组(即RenderPass用到的所有的附件)所有用到的个数相同
+    //附件仅用于PS, 可以粗暴的将附件理解为RenderTarget
     std::vector<FVulkanFrameBufferAttachment> CachedAttachments;
 
     //frame buffer对应的clear value

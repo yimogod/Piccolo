@@ -17,6 +17,7 @@ public:
                                    VkMemoryPropertyFlags RequriedProperty);
 
     // 内部创建图片的函数
+    // TODO 创建一个Image类来封装这些状态和接口
     static void CreateImage(VkDevice Device,
                             VkPhysicalDevice Gpu,
                             uint32_t Width,

@@ -7,8 +7,9 @@
 class FVulkanCommandBuffer;
 class FVulkanRenderPass;
 
-//这里直接把附件描述作为一个数组维护了
-//附件就认为是对ImageView的描述. 定义RenderPass如何使用这些Image.
+//这里直接把附件描述作为一个数组维护了. 提供给RenderPass使用
+//先将附件粗暴的理解为RT
+//附件是对ImageView的描述. 定义RenderPass如何使用这些Image. 也即RenderPass如何绘制到RT
 //而附件对应的ImageView在哪里呢? 在FrameBuffer里. 即这里用到了几个附件. 在Frame也得clear多少个
 
 //AttachmentDescription提供了本pass所有用到的附件, 然后经过组合使用形成不同的Reference,
@@ -103,13 +104,15 @@ public:
     //设置附件的格式
     void SetFlag(uint32_t DependencyIndex, VkDependencyFlags Flag);
 
-    //依赖双方
+    //依赖双方, Src是生成数据的, Dst是消费数据的. 即Dst依赖Src
     void SetSubpass(uint32_t DependencyIndex, uint32_t SrcSubpass, uint32_t DstSubpass);
 
     //依赖双方分别用于那个阶段 比如ps阶段, 附件输出阶段等
+    //SrcStageMask subpass在哪个阶段生产数据
+    //DstStageMask subpass在哪个阶段消费数据
     void SetStageMask(uint32_t DependencyIndex, VkPipelineStageFlags SrcStageMask, VkPipelineStageFlags DstStageMask);
 
-    //设置依赖的双方如何别访问
+    //设置依赖的双方如何访问数据
     void SetAccessMask(uint32_t DependencyIndex, VkAccessFlags SrcAccessMask, VkAccessFlags DstAccessMask);
 private:
     //有几个依赖
