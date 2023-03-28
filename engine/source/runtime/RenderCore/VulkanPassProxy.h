@@ -36,7 +36,7 @@ public:
 
     // 1.和frame相关的
     // 2.本Pass用到的所有的描述符集.
-    // 3. 和Subpass的个数无关.
+    // 3.和Subpass的个数无关.
     //另外每个mesh也有自己的描述符集. 在绘制单个mesh, 而不是针对整个屏幕的操作时, 用的是单mesh的描述符集
     //会从这些所有的 描述符集子集来组装管线布局. 一个管线对应一个subpass
     std::vector<FVulkanDescriptorSet> DescriptorSets;

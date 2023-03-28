@@ -198,150 +198,84 @@ namespace Piccolo
         VkDescriptorPool      VPool = Pool->getResource();
         Set.CreateDescriptorSet(m_rhi->m_device, VPool);
 
+        //TODO 兼容旧引擎
         m_descriptor_infos.resize(1);
         m_descriptor_infos[0].layout = new VulkanDescriptorSetLayout();
         ((VulkanDescriptorSetLayout*)m_descriptor_infos[0].layout)->setResource(Proxy.DescriptorSets[0].GetLayout());
-
         m_descriptor_infos[0].descriptor_set = new VulkanDescriptorSet();
         ((VulkanDescriptorSet*)m_descriptor_infos[0].descriptor_set)->setResource(Proxy.DescriptorSets[0].GetDescriptorSet());
     }
     void UDirectionalLightShadowPass::setupPipelines()
     {
+        Proxy.Pipelines.resize(1);
+        FVulkanPipeline& Pipeline = Proxy.Pipelines[0];
+
+        //设置布局
+        std::vector<VkDescriptorSetLayout> DescLayouts = {
+            Proxy.GetVkDescriptorLayout(0), 
+            ((VulkanDescriptorSetLayout*)m_per_mesh_layout)->getResource()
+        };
+        Pipeline.CreateLayout(m_rhi->m_device, DescLayouts);
+
+        //设置Shader
+        FVulkanShader Shader;
+        Shader.CreateShader(
+            m_rhi->m_device, MESH_DIRECTIONAL_LIGHT_SHADOW_VERT, MESH_DIRECTIONAL_LIGHT_SHADOW_FRAG);
+        std::vector<VkPipelineShaderStageCreateInfo> shader_stages;
+        Shader.CreateStages(shader_stages);
+
+        //设置状态
+        FVulkanPipelineState State;
+        State.SetupDefaultState();
+
+        //设置顶点绑定和顶点属性
+        //TODO 兼容旧引擎
+        RHIVertexInputBindingDescription VBD = MeshVertex::getBindingDescriptions()[0];
+        VkVertexInputBindingDescription  VB;
+        VB.binding = VBD.binding;
+        VB.stride  = VBD.stride;
+        VB.inputRate = (VkVertexInputRate)VBD.inputRate;
+
+        RHIVertexInputAttributeDescription VAD = MeshVertex::getAttributeDescriptions()[0];
+        VkVertexInputAttributeDescription  VA  = {VAD.location, VAD.binding, (VkFormat)VAD.format, VAD.offset};
+
+        std::vector<VkVertexInputBindingDescription> VertexBindings = { VB };
+        State.SetVertexBindingDescription(VertexBindings);
+        std::vector<VkVertexInputAttributeDescription> VertexAttributes = {VA};
+        State.SetVertexAttributeDescription(VertexAttributes);
+
+        //设置pipeline的个性化数据
+        VkViewport viewport = Proxy.FrameBuffer.GetFullViewport();
+        VkRect2D   scissor  = Proxy.FrameBuffer.GetFullScissor();
+        State.SetViewportState(viewport, scissor);
+        State.SetRasterFrontFace(VK_FRONT_FACE_COUNTER_CLOCKWISE); //逆时针正方向
+
+        State.SetColorBlendNum(1);
+        State.SetColorBlendAttachmentEnable(0, VK_FALSE);
+        State.SetColorBlendFactor(0, VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
+        State.SetAlphaBlendFactor(0, VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
+        State.SetupColorBlend();
+
+        State.SetDepthState(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS, VK_FALSE);
+        State.SetStencilState(VK_FALSE);
+        
+        State.SetupNullDynamicState();
+
+        //创建管线
+        Pipeline.CreatePipeline(m_rhi->m_device, Proxy.RenderPass.GetVKRenderPass(), 0, shader_stages, State);
+
+
+        //TODO 兼容旧数据
         m_render_pipelines.resize(1);
+        VulkanPipeline* VP = new VulkanPipeline();
+        VP->setResource(Pipeline.GetPipeline());
+        m_render_pipelines[0].pipeline = VP;
+        
+        VulkanPipelineLayout* VPL = new VulkanPipelineLayout();
+        VPL->setResource(Pipeline.GetLayout());
+        m_render_pipelines[0].layout = VPL;
 
-        RHIDescriptorSetLayout*      descriptorset_layouts[] = {m_descriptor_infos[0].layout, m_per_mesh_layout};
-        RHIPipelineLayoutCreateInfo pipeline_layout_create_info {};
-        pipeline_layout_create_info.sType          = RHI_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        pipeline_layout_create_info.setLayoutCount = (sizeof(descriptorset_layouts) / sizeof(descriptorset_layouts[0]));
-        pipeline_layout_create_info.pSetLayouts    = descriptorset_layouts;
-
-        if (RHI_SUCCESS != m_rhi->createPipelineLayout(&pipeline_layout_create_info, m_render_pipelines[0].layout))
-        {
-            throw std::runtime_error("create mesh directional light shadow pipeline layout");
-        }
-
-        RHIShader* vert_shader_module =
-            m_rhi->createShaderModule(MESH_DIRECTIONAL_LIGHT_SHADOW_VERT);
-        RHIShader* frag_shader_module =
-            m_rhi->createShaderModule(MESH_DIRECTIONAL_LIGHT_SHADOW_FRAG);
-
-        RHIPipelineShaderStageCreateInfo vert_pipeline_shader_stage_create_info {};
-        vert_pipeline_shader_stage_create_info.sType  = RHI_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        vert_pipeline_shader_stage_create_info.stage  = RHI_SHADER_STAGE_VERTEX_BIT;
-        vert_pipeline_shader_stage_create_info.module = vert_shader_module;
-        vert_pipeline_shader_stage_create_info.pName  = "main";
-
-        RHIPipelineShaderStageCreateInfo frag_pipeline_shader_stage_create_info {};
-        frag_pipeline_shader_stage_create_info.sType  = RHI_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        frag_pipeline_shader_stage_create_info.stage  = RHI_SHADER_STAGE_FRAGMENT_BIT;
-        frag_pipeline_shader_stage_create_info.module = frag_shader_module;
-        frag_pipeline_shader_stage_create_info.pName  = "main";
-
-        RHIPipelineShaderStageCreateInfo shader_stages[] = {vert_pipeline_shader_stage_create_info,
-                                                           frag_pipeline_shader_stage_create_info};
-
-        auto                                 vertex_binding_descriptions   = MeshVertex::getBindingDescriptions();
-        auto                                 vertex_attribute_descriptions = MeshVertex::getAttributeDescriptions();
-        RHIPipelineVertexInputStateCreateInfo vertex_input_state_create_info {};
-        vertex_input_state_create_info.sType = RHI_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        vertex_input_state_create_info.vertexBindingDescriptionCount   = 1;
-        vertex_input_state_create_info.pVertexBindingDescriptions      = &vertex_binding_descriptions[0];
-        vertex_input_state_create_info.vertexAttributeDescriptionCount = 1;
-        vertex_input_state_create_info.pVertexAttributeDescriptions    = &vertex_attribute_descriptions[0];
-
-        RHIPipelineInputAssemblyStateCreateInfo input_assembly_create_info {};
-        input_assembly_create_info.sType                  = RHI_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-        input_assembly_create_info.topology               = RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-        input_assembly_create_info.primitiveRestartEnable = RHI_FALSE;
-
-        RHIViewport viewport = {
-            0, 0, s_directional_light_shadow_map_dimension, s_directional_light_shadow_map_dimension, 0.0, 1.0};
-        RHIRect2D scissor = {{0, 0},
-                            {s_directional_light_shadow_map_dimension, s_directional_light_shadow_map_dimension}};
-
-        RHIPipelineViewportStateCreateInfo viewport_state_create_info {};
-        viewport_state_create_info.sType         = RHI_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-        viewport_state_create_info.viewportCount = 1;
-        viewport_state_create_info.pViewports    = &viewport;
-        viewport_state_create_info.scissorCount  = 1;
-        viewport_state_create_info.pScissors     = &scissor;
-
-        RHIPipelineRasterizationStateCreateInfo rasterization_state_create_info {};
-        rasterization_state_create_info.sType            = RHI_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-        rasterization_state_create_info.depthClampEnable = RHI_FALSE;
-        rasterization_state_create_info.rasterizerDiscardEnable = RHI_FALSE;
-        rasterization_state_create_info.polygonMode             = RHI_POLYGON_MODE_FILL;
-        rasterization_state_create_info.lineWidth               = 1.0f;
-        rasterization_state_create_info.cullMode                = RHI_CULL_MODE_BACK_BIT;
-        rasterization_state_create_info.frontFace               = RHI_FRONT_FACE_COUNTER_CLOCKWISE;
-        rasterization_state_create_info.depthBiasEnable         = RHI_FALSE;
-        rasterization_state_create_info.depthBiasConstantFactor = 0.0f;
-        rasterization_state_create_info.depthBiasClamp          = 0.0f;
-        rasterization_state_create_info.depthBiasSlopeFactor    = 0.0f;
-
-        RHIPipelineMultisampleStateCreateInfo multisample_state_create_info {};
-        multisample_state_create_info.sType                = RHI_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-        multisample_state_create_info.sampleShadingEnable  = RHI_FALSE;
-        multisample_state_create_info.rasterizationSamples = RHI_SAMPLE_COUNT_1_BIT;
-
-        RHIPipelineColorBlendAttachmentState color_blend_attachment_state {};
-        color_blend_attachment_state.colorWriteMask =
-            RHI_COLOR_COMPONENT_R_BIT | RHI_COLOR_COMPONENT_G_BIT | RHI_COLOR_COMPONENT_B_BIT | RHI_COLOR_COMPONENT_A_BIT;
-        color_blend_attachment_state.blendEnable         = RHI_FALSE;
-        color_blend_attachment_state.srcColorBlendFactor = RHI_BLEND_FACTOR_ONE;
-        color_blend_attachment_state.dstColorBlendFactor = RHI_BLEND_FACTOR_ZERO;
-        color_blend_attachment_state.colorBlendOp        = RHI_BLEND_OP_ADD;
-        color_blend_attachment_state.srcAlphaBlendFactor = RHI_BLEND_FACTOR_ONE;
-        color_blend_attachment_state.dstAlphaBlendFactor = RHI_BLEND_FACTOR_ZERO;
-        color_blend_attachment_state.alphaBlendOp        = RHI_BLEND_OP_ADD;
-
-        RHIPipelineColorBlendStateCreateInfo color_blend_state_create_info {};
-        color_blend_state_create_info.sType             = RHI_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        color_blend_state_create_info.logicOpEnable     = RHI_FALSE;
-        color_blend_state_create_info.logicOp           = RHI_LOGIC_OP_COPY;
-        color_blend_state_create_info.attachmentCount   = 1;
-        color_blend_state_create_info.pAttachments      = &color_blend_attachment_state;
-        color_blend_state_create_info.blendConstants[0] = 0.0f;
-        color_blend_state_create_info.blendConstants[1] = 0.0f;
-        color_blend_state_create_info.blendConstants[2] = 0.0f;
-        color_blend_state_create_info.blendConstants[3] = 0.0f;
-
-        RHIPipelineDepthStencilStateCreateInfo depth_stencil_create_info {};
-        depth_stencil_create_info.sType                 = RHI_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-        depth_stencil_create_info.depthTestEnable       = RHI_TRUE;
-        depth_stencil_create_info.depthWriteEnable      = RHI_TRUE;
-        depth_stencil_create_info.depthCompareOp        = RHI_COMPARE_OP_LESS;
-        depth_stencil_create_info.depthBoundsTestEnable = RHI_FALSE;
-        depth_stencil_create_info.stencilTestEnable     = RHI_FALSE;
-
-        RHIPipelineDynamicStateCreateInfo dynamic_state_create_info {};
-        dynamic_state_create_info.sType             = RHI_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-        dynamic_state_create_info.dynamicStateCount = 0;
-        dynamic_state_create_info.pDynamicStates    = NULL;
-
-        RHIGraphicsPipelineCreateInfo pipelineInfo {};
-        pipelineInfo.sType               = RHI_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        pipelineInfo.stageCount          = (sizeof(shader_stages) / sizeof(shader_stages[0]));
-        pipelineInfo.pStages             = shader_stages;
-        pipelineInfo.pVertexInputState   = &vertex_input_state_create_info;
-        pipelineInfo.pInputAssemblyState = &input_assembly_create_info;
-        pipelineInfo.pViewportState      = &viewport_state_create_info;
-        pipelineInfo.pRasterizationState = &rasterization_state_create_info;
-        pipelineInfo.pMultisampleState   = &multisample_state_create_info;
-        pipelineInfo.pColorBlendState    = &color_blend_state_create_info;
-        pipelineInfo.pDepthStencilState  = &depth_stencil_create_info;
-        pipelineInfo.layout              = m_render_pipelines[0].layout;
-        pipelineInfo.renderPass          = m_framebuffer.render_pass;
-        pipelineInfo.subpass             = 0;
-        pipelineInfo.basePipelineHandle  = RHI_NULL_HANDLE;
-        pipelineInfo.pDynamicState       = &dynamic_state_create_info;
-
-        if (RHI_SUCCESS != m_rhi->createGraphicsPipelines(RHI_NULL_HANDLE, 1, &pipelineInfo, m_render_pipelines[0].pipeline))
-        {
-            throw std::runtime_error("create mesh directional light shadow graphics pipeline");
-        }
-
-        m_rhi->destroyShaderModule(vert_shader_module);
+        Shader.DestroyShader(m_rhi->m_device);
     }
     //这里的描述符集的创建实际上是把write和描述符集绑定起来
     void UDirectionalLightShadowPass::setupDescriptorSet()

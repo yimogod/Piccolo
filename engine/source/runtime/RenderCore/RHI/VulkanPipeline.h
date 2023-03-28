@@ -62,7 +62,8 @@ public:
     void SetupColorBlend();
 
     //设置深度状态
-    void SetDepthState(VkBool32 bTestEnable, VkBool32 bWriteEnable, VkCompareOp CompareOP);
+    void SetDepthState(VkBool32 bTestEnable, VkBool32 bWriteEnable, VkCompareOp CompareOP, VkBool32 bBoundTestEnable);
+    void SetStencilState(VkBool32 bTestEnable);
 
     //禁用默认的动态状态
     void SetupNullDynamicState();

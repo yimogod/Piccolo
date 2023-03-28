@@ -201,11 +201,16 @@ void FVulkanPipelineState::SetupColorBlend()
     ColorBlendState.attachmentCount = ColorBlendData.size();
     ColorBlendState.pAttachments      = ColorBlendData.data();
 }
-void FVulkanPipelineState::SetDepthState(VkBool32 bTestEnable, VkBool32 bWriteEnable, VkCompareOp CompareOP)
+void FVulkanPipelineState::SetDepthState(VkBool32 bTestEnable, VkBool32 bWriteEnable, VkCompareOp CompareOP, VkBool32 bDepthBoundTestEnable)
 {
     DepthState.depthTestEnable = bTestEnable;
     DepthState.depthWriteEnable = bWriteEnable;
     DepthState.depthCompareOp = CompareOP;
+    DepthState.depthBoundsTestEnable = bDepthBoundTestEnable;
+}
+void FVulkanPipelineState::SetStencilState(VkBool32 bTestEnable)
+{
+    DepthState.stencilTestEnable = bTestEnable; 
 }
 void FVulkanPipelineState::SetupNullDynamicState()
 {

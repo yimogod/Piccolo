@@ -60,6 +60,8 @@ namespace Piccolo
             g_editor_global_context.m_input_manager->tick(delta_time);
             if (!m_engine_runtime->tickOneFrame(delta_time))
                 return;
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
     }
 } // namespace Piccolo
