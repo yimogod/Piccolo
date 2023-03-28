@@ -52,7 +52,7 @@ void FVulkanDescriptorWrite::SetWriteNum(uint32_t Num)
 }
 void FVulkanDescriptorWrite::SetBuffer(uint32_t WriteIndex, VkDescriptorBufferInfo* Buffer)
 {
-    //这里还没有赋值描述符集 dstSet. 会在后面进行赋值. 减少参数传递为了
+    //这里还没有赋值描述符集 dstSet. 会在UpdateDescriptorSets里面进行赋值. 减少参数传递为了
     auto& Write = Writes[WriteIndex];
     Write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     Write.pNext = nullptr;

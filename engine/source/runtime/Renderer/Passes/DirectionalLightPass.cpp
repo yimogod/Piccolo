@@ -193,17 +193,13 @@ namespace Piccolo
         Set.SetLayoutBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);
         Set.SetLayoutBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);
         Set.SetLayoutBinding(2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);
-        
-        VulkanDescriptorPool* Pool = (VulkanDescriptorPool*)m_rhi->m_descriptor_pool;
-        VkDescriptorPool      VPool = Pool->getResource();
-        Set.CreateDescriptorSet(m_rhi->m_device, VPool);
+        Set.CreateDescriptorLayout(m_rhi->m_device);
+
 
         //TODO 兼容旧引擎
         m_descriptor_infos.resize(1);
         m_descriptor_infos[0].layout = new VulkanDescriptorSetLayout();
         ((VulkanDescriptorSetLayout*)m_descriptor_infos[0].layout)->setResource(Proxy.DescriptorSets[0].GetLayout());
-        m_descriptor_infos[0].descriptor_set = new VulkanDescriptorSet();
-        ((VulkanDescriptorSet*)m_descriptor_infos[0].descriptor_set)->setResource(Proxy.DescriptorSets[0].GetDescriptorSet());
     }
     void UDirectionalLightShadowPass::setupPipelines()
     {
@@ -277,100 +273,45 @@ namespace Piccolo
 
         Shader.DestroyShader(m_rhi->m_device);
     }
-    //这里的描述符集的创建实际上是把write和描述符集绑定起来
+    //创建描述符集, 并把write和描述符集绑定起来
     void UDirectionalLightShadowPass::setupDescriptorSet()
     {
-        RHIDescriptorSetAllocateInfo mesh_directional_light_shadow_global_descriptor_set_alloc_info;
-        mesh_directional_light_shadow_global_descriptor_set_alloc_info.sType =
-            RHI_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        mesh_directional_light_shadow_global_descriptor_set_alloc_info.pNext          = NULL;
-        mesh_directional_light_shadow_global_descriptor_set_alloc_info.descriptorPool = m_rhi->getDescriptorPoor();
-        mesh_directional_light_shadow_global_descriptor_set_alloc_info.descriptorSetCount = 1;
-        mesh_directional_light_shadow_global_descriptor_set_alloc_info.pSetLayouts = &m_descriptor_infos[0].layout;
+        auto& Set = Proxy.DescriptorSets[0];
+        VulkanDescriptorPool* Pool  = (VulkanDescriptorPool*)m_rhi->m_descriptor_pool;
+        VkDescriptorPool      VPool = Pool->getResource();
+        Set.CreateDescriptorSet(m_rhi->m_device, VPool);
 
-        if (RHI_SUCCESS != m_rhi->allocateDescriptorSets(&mesh_directional_light_shadow_global_descriptor_set_alloc_info, m_descriptor_infos[0].descriptor_set))
-        {
-            throw std::runtime_error("allocate mesh directional light shadow global descriptor set");
-        }
 
-        RHIDescriptorBufferInfo mesh_directional_light_shadow_perframe_storage_buffer_info = {};
-        // this offset plus dynamic_offset should not be greater than the size of the buffer
-        mesh_directional_light_shadow_perframe_storage_buffer_info.offset = 0;
-        // the range means the size actually used by the shader per draw call
-        mesh_directional_light_shadow_perframe_storage_buffer_info.range =
-            sizeof(MeshDirectionalLightShadowPerframeStorageBufferObject);
-        mesh_directional_light_shadow_perframe_storage_buffer_info.buffer =
-            m_global_render_resource->_storage_buffer._global_upload_ringbuffer;
-        assert(mesh_directional_light_shadow_perframe_storage_buffer_info.range <
-               m_global_render_resource->_storage_buffer._max_storage_buffer_range);
+        // Write和binding的数量一样
+        // 创建了3个DescBufferInfo, 对应 VS shader的3个uniform(buffer), 奇怪的是在shader中没有uniform的标签
+        
+        //TODO 创建描述符要用的buffer
+        VkBuffer RawBuffer =
+            ((VulkanBuffer*)m_global_render_resource->_storage_buffer._global_upload_ringbuffer)->getResource();
+        FVulkanBuffer Buffer = FVulkanBuffer(RawBuffer);
 
-        RHIDescriptorBufferInfo mesh_directional_light_shadow_perdrawcall_storage_buffer_info = {};
-        mesh_directional_light_shadow_perdrawcall_storage_buffer_info.offset                 = 0;
-        mesh_directional_light_shadow_perdrawcall_storage_buffer_info.range =
-            sizeof(MeshDirectionalLightShadowPerdrawcallStorageBufferObject);
-        mesh_directional_light_shadow_perdrawcall_storage_buffer_info.buffer =
-            m_global_render_resource->_storage_buffer._global_upload_ringbuffer;
-        assert(mesh_directional_light_shadow_perdrawcall_storage_buffer_info.range <
-               m_global_render_resource->_storage_buffer._max_storage_buffer_range);
 
-        RHIDescriptorBufferInfo mesh_directional_light_shadow_per_drawcall_vertex_blending_storage_buffer_info = {};
-        mesh_directional_light_shadow_per_drawcall_vertex_blending_storage_buffer_info.offset                 = 0;
-        mesh_directional_light_shadow_per_drawcall_vertex_blending_storage_buffer_info.range =
-            sizeof(MeshDirectionalLightShadowPerdrawcallVertexBlendingStorageBufferObject);
-        mesh_directional_light_shadow_per_drawcall_vertex_blending_storage_buffer_info.buffer =
-            m_global_render_resource->_storage_buffer._global_upload_ringbuffer;
-        assert(mesh_directional_light_shadow_per_drawcall_vertex_blending_storage_buffer_info.range <
-               m_global_render_resource->_storage_buffer._max_storage_buffer_range);
+        //第一个是平行光的MVP
+        VkDescriptorBufferInfo mesh_light_info =
+            Buffer.CreateDescriptorBufferInfo(sizeof(MeshDirectionalLightShadowPerframeStorageBufferObject));
+        Set.SetWriteBuffer(0, &mesh_light_info);
 
-        RHIDescriptorSet* descriptor_set_to_write = m_descriptor_infos[0].descriptor_set;
+        //第二个每个Actor的Transform值. 直接传入了64个Actor位置的数组
+        VkDescriptorBufferInfo meshes_transfor_info =
+            Buffer.CreateDescriptorBufferInfo(sizeof(MeshDirectionalLightShadowPerdrawcallStorageBufferObject));
+        Set.SetWriteBuffer(1, &meshes_transfor_info);
 
-        RHIWriteDescriptorSet descriptor_writes[3];
+        //第三个是顶点动画
+        VkDescriptorBufferInfo mesh_vertex_blending_info = Buffer.CreateDescriptorBufferInfo(
+            sizeof(MeshDirectionalLightShadowPerdrawcallVertexBlendingStorageBufferObject));
+        Set.SetWriteBuffer(2, &mesh_vertex_blending_info);
 
-        RHIWriteDescriptorSet& mesh_directional_light_shadow_perframe_storage_buffer_write_info = descriptor_writes[0];
-        mesh_directional_light_shadow_perframe_storage_buffer_write_info.sType = RHI_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        mesh_directional_light_shadow_perframe_storage_buffer_write_info.pNext = NULL;
-        mesh_directional_light_shadow_perframe_storage_buffer_write_info.dstSet          = descriptor_set_to_write;
-        mesh_directional_light_shadow_perframe_storage_buffer_write_info.dstBinding      = 0;
-        mesh_directional_light_shadow_perframe_storage_buffer_write_info.dstArrayElement = 0;
-        mesh_directional_light_shadow_perframe_storage_buffer_write_info.descriptorType =
-            RHI_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
-        mesh_directional_light_shadow_perframe_storage_buffer_write_info.descriptorCount = 1;
-        mesh_directional_light_shadow_perframe_storage_buffer_write_info.pBufferInfo =
-            &mesh_directional_light_shadow_perframe_storage_buffer_info;
+        Set.UpdateDescriptorSets(m_rhi->m_device);
 
-        RHIWriteDescriptorSet& mesh_directional_light_shadow_perdrawcall_storage_buffer_write_info =
-            descriptor_writes[1];
-        mesh_directional_light_shadow_perdrawcall_storage_buffer_write_info.sType =
-            RHI_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        mesh_directional_light_shadow_perdrawcall_storage_buffer_write_info.pNext           = NULL;
-        mesh_directional_light_shadow_perdrawcall_storage_buffer_write_info.dstSet          = descriptor_set_to_write;
-        mesh_directional_light_shadow_perdrawcall_storage_buffer_write_info.dstBinding      = 1;
-        mesh_directional_light_shadow_perdrawcall_storage_buffer_write_info.dstArrayElement = 0;
-        mesh_directional_light_shadow_perdrawcall_storage_buffer_write_info.descriptorType =
-            RHI_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
-        mesh_directional_light_shadow_perdrawcall_storage_buffer_write_info.descriptorCount = 1;
-        mesh_directional_light_shadow_perdrawcall_storage_buffer_write_info.pBufferInfo =
-            &mesh_directional_light_shadow_perdrawcall_storage_buffer_info;
-
-        RHIWriteDescriptorSet& mesh_directional_light_shadow_per_drawcall_vertex_blending_storage_buffer_write_info =
-            descriptor_writes[2];
-        mesh_directional_light_shadow_per_drawcall_vertex_blending_storage_buffer_write_info.sType =
-            RHI_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        mesh_directional_light_shadow_per_drawcall_vertex_blending_storage_buffer_write_info.pNext = NULL;
-        mesh_directional_light_shadow_per_drawcall_vertex_blending_storage_buffer_write_info.dstSet =
-            descriptor_set_to_write;
-        mesh_directional_light_shadow_per_drawcall_vertex_blending_storage_buffer_write_info.dstBinding      = 2;
-        mesh_directional_light_shadow_per_drawcall_vertex_blending_storage_buffer_write_info.dstArrayElement = 0;
-        mesh_directional_light_shadow_per_drawcall_vertex_blending_storage_buffer_write_info.descriptorType =
-            RHI_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
-        mesh_directional_light_shadow_per_drawcall_vertex_blending_storage_buffer_write_info.descriptorCount = 1;
-        mesh_directional_light_shadow_per_drawcall_vertex_blending_storage_buffer_write_info.pBufferInfo =
-            &mesh_directional_light_shadow_per_drawcall_vertex_blending_storage_buffer_info;
-
-        m_rhi->updateDescriptorSets((sizeof(descriptor_writes) / sizeof(descriptor_writes[0])),
-                                    descriptor_writes,
-                                    0,
-                                    NULL);
+        // TODO 兼容旧引擎
+        m_descriptor_infos[0].descriptor_set = new VulkanDescriptorSet();
+        ((VulkanDescriptorSet*)m_descriptor_infos[0].descriptor_set)
+            ->setResource(Proxy.DescriptorSets[0].GetDescriptorSet());
     }
     void UDirectionalLightShadowPass::drawModel()
     {
