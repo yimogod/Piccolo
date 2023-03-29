@@ -15,11 +15,6 @@ namespace Piccolo
 {
     class RenderResourceBase;
 
-    struct UMainCameraPassInitInfo : FRenderPassInitInfo
-    {
-        bool enble_fxaa;
-    };
-
     class UMainCameraPass : public URenderPass
     {
     public:
@@ -69,21 +64,12 @@ namespace Piccolo
                   ParticlePass&     particle_pass,
                   uint32_t          current_swapchain_image_index);
 
-        void drawForward(ColorGradingPass& color_grading_pass,
-                         FXAAPass&         fxaa_pass,
-                         ToneMappingPass&  tone_mapping_pass,
-                         UIPass&           ui_pass,
-                         CombineUIPass&    combine_ui_pass,
-                         ParticlePass&     particle_pass,
-                         uint32_t          current_swapchain_image_index);
-
         void copyNormalAndDepthImage();
 
         RHIImageView* m_point_light_shadow_color_image_view;
         RHIImageView* m_directional_light_shadow_color_image_view;
 
         bool                            m_is_show_axis {false};
-        bool                            m_enable_fxaa {false};
         size_t                          m_selected_axis {3};
         MeshPerframeStorageBufferObject m_mesh_perframe_storage_buffer_object;
         AxisStorageBufferObject         m_axis_storage_buffer_object;

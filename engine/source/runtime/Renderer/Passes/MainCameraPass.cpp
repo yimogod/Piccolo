@@ -25,9 +25,6 @@ namespace Piccolo
     {
         URenderPass::initialize(nullptr);
 
-        const UMainCameraPassInitInfo* _init_info = static_cast<const UMainCameraPassInitInfo*>(init_info);
-        m_enable_fxaa                            = _init_info->enble_fxaa;
-
         setupAttachments();
         setupRenderPass();
         setupDescriptorSetLayout();
@@ -340,16 +337,8 @@ namespace Piccolo
         color_grading_pass_input_attachment_reference.layout = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
         RHIAttachmentReference color_grading_pass_color_attachment_reference {};
-        if (m_enable_fxaa)
-        {
-            color_grading_pass_color_attachment_reference.attachment =
-                &post_process_odd_color_attachment_description - attachments;
-        }
-        else
-        {
-            color_grading_pass_color_attachment_reference.attachment =
+        color_grading_pass_color_attachment_reference.attachment =
                 &backup_odd_color_attachment_description - attachments;
-        }
         color_grading_pass_color_attachment_reference.layout = RHI_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
         RHISubpassDescription& color_grading_pass  = subpasses[_main_camera_subpass_color_grading];
@@ -363,15 +352,7 @@ namespace Piccolo
         color_grading_pass.pPreserveAttachments    = NULL;
 
         RHIAttachmentReference fxaa_pass_input_attachment_reference {};
-        if (m_enable_fxaa)
-        {
-            fxaa_pass_input_attachment_reference.attachment =
-                &post_process_odd_color_attachment_description - attachments;
-        }
-        else
-        {
-            fxaa_pass_input_attachment_reference.attachment = &backup_even_color_attachment_description - attachments;
-        }
+        fxaa_pass_input_attachment_reference.attachment = &backup_even_color_attachment_description - attachments;
         fxaa_pass_input_attachment_reference.layout = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
         RHIAttachmentReference fxaa_pass_color_attachment_reference {};
@@ -1991,99 +1972,6 @@ namespace Piccolo
         color_grading_pass.draw();
 
         m_rhi->cmdNextSubpassPFN(m_rhi->getCurrentCommandBuffer(), RHI_SUBPASS_CONTENTS_INLINE);
-
-        if (m_enable_fxaa)
-            fxaa_pass.draw();
-
-        m_rhi->cmdNextSubpassPFN(m_rhi->getCurrentCommandBuffer(), RHI_SUBPASS_CONTENTS_INLINE);
-
-        RHIClearAttachment clear_attachments[1];
-        clear_attachments[0].aspectMask                  = RHI_IMAGE_ASPECT_COLOR_BIT;
-        clear_attachments[0].colorAttachment             = 0;
-        clear_attachments[0].clearValue.color.float32[0] = 0.0;
-        clear_attachments[0].clearValue.color.float32[1] = 0.0;
-        clear_attachments[0].clearValue.color.float32[2] = 0.0;
-        clear_attachments[0].clearValue.color.float32[3] = 0.0;
-        RHIClearRect clear_rects[1];
-        clear_rects[0].baseArrayLayer     = 0;
-        clear_rects[0].layerCount         = 1;
-        clear_rects[0].rect.offset.x      = 0;
-        clear_rects[0].rect.offset.y      = 0;
-        clear_rects[0].rect.extent.width  = m_rhi->getSwapchainInfo().extent.width;
-        clear_rects[0].rect.extent.height = m_rhi->getSwapchainInfo().extent.height;
-        m_rhi->cmdClearAttachmentsPFN(m_rhi->getCurrentCommandBuffer(),
-                                      sizeof(clear_attachments) / sizeof(clear_attachments[0]),
-                                      clear_attachments,
-                                      sizeof(clear_rects) / sizeof(clear_rects[0]),
-                                      clear_rects);
-
-        drawAxis();
-
-        ui_pass.draw();
-
-        m_rhi->cmdNextSubpassPFN(m_rhi->getCurrentCommandBuffer(), RHI_SUBPASS_CONTENTS_INLINE);
-
-        combine_ui_pass.draw();
-
-        m_rhi->cmdEndRenderPassPFN(m_rhi->getCurrentCommandBuffer());
-    }
-
-    void UMainCameraPass::drawForward(ColorGradingPass& color_grading_pass,
-                                     FXAAPass&         fxaa_pass,
-                                     ToneMappingPass&  tone_mapping_pass,
-                                     UIPass&           ui_pass,
-                                     CombineUIPass&    combine_ui_pass,
-                                     ParticlePass&     particle_pass,
-                                     uint32_t          current_swapchain_image_index)
-    {
-        {
-            RHIRenderPassBeginInfo renderpass_begin_info {};
-            renderpass_begin_info.sType             = RHI_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderpass_begin_info.renderPass        = m_framebuffer.render_pass;
-            renderpass_begin_info.framebuffer       = m_swapchain_framebuffers[current_swapchain_image_index];
-            renderpass_begin_info.renderArea.offset = {0, 0};
-            renderpass_begin_info.renderArea.extent = m_rhi->getSwapchainInfo().extent;
-
-            RHIClearValue clear_values[_main_camera_pass_attachment_count];
-            clear_values[_main_camera_pass_gbuffer_a].color          = {{0.0f, 0.0f, 0.0f, 0.0f}};
-            clear_values[_main_camera_pass_gbuffer_b].color          = {{0.0f, 0.0f, 0.0f, 0.0f}};
-            clear_values[_main_camera_pass_gbuffer_c].color          = {{0.0f, 0.0f, 0.0f, 0.0f}};
-            clear_values[_main_camera_pass_backup_buffer_odd].color  = {{0.0f, 0.0f, 0.0f, 1.0f}};
-            clear_values[_main_camera_pass_backup_buffer_even].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
-            clear_values[_main_camera_pass_depth].depthStencil       = {1.0f, 0};
-            clear_values[_main_camera_pass_swap_chain_image].color   = {{0.0f, 0.0f, 0.0f, 1.0f}};
-            renderpass_begin_info.clearValueCount                    = (sizeof(clear_values) / sizeof(clear_values[0]));
-            renderpass_begin_info.pClearValues                       = clear_values;
-
-            m_rhi->cmdBeginRenderPassPFN(
-                m_rhi->getCurrentCommandBuffer(), &renderpass_begin_info, RHI_SUBPASS_CONTENTS_INLINE);
-        }
-
-        m_rhi->cmdNextSubpassPFN(m_rhi->getCurrentCommandBuffer(), RHI_SUBPASS_CONTENTS_INLINE);
-
-        m_rhi->cmdNextSubpassPFN(m_rhi->getCurrentCommandBuffer(), RHI_SUBPASS_CONTENTS_INLINE);
-
-        float color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-        m_rhi->pushEvent(m_rhi->getCurrentCommandBuffer(), "Forward Lighting", color);
-
-        drawMeshLighting();
-        drawSkybox();
-        particle_pass.draw();
-
-        m_rhi->popEvent(m_rhi->getCurrentCommandBuffer());
-
-        m_rhi->cmdNextSubpassPFN(m_rhi->getCurrentCommandBuffer(), RHI_SUBPASS_CONTENTS_INLINE);
-
-        tone_mapping_pass.draw();
-
-        m_rhi->cmdNextSubpassPFN(m_rhi->getCurrentCommandBuffer(), RHI_SUBPASS_CONTENTS_INLINE);
-
-        color_grading_pass.draw();
-
-        m_rhi->cmdNextSubpassPFN(m_rhi->getCurrentCommandBuffer(), RHI_SUBPASS_CONTENTS_INLINE);
-
-        if (m_enable_fxaa)
-            fxaa_pass.draw();
 
         m_rhi->cmdNextSubpassPFN(m_rhi->getCurrentCommandBuffer(), RHI_SUBPASS_CONTENTS_INLINE);
 
