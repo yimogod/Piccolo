@@ -206,7 +206,7 @@ namespace Piccolo
         Proxy.Pipelines.resize(1);
         FVulkanPipeline& Pipeline = Proxy.Pipelines[0];
 
-        //设置布局
+        //设置管线布局, 管线布局用到了两个描述集布局
         std::vector<VkDescriptorSetLayout> DescLayouts = {
             Proxy.GetVkDescriptorLayout(0), 
             ((VulkanDescriptorSetLayout*)m_per_mesh_layout)->getResource()
@@ -383,27 +383,25 @@ namespace Piccolo
                 // TODO: render from near to far
 
                 //从这里看, 并没有进行模型的合并. 而且把材质球一样的模型放在一起渲染, 减少状态切换
-                //感觉描述符布局应该是材质球的成员变量, 而不适合mesh的
+                //描述符布局应该是材质球的成员变量
                 for (auto& [mesh, mesh_nodes] : mesh_instanced)
                 {
                     uint32_t total_instance_count = static_cast<uint32_t>(mesh_nodes.size());
                     if (total_instance_count > 0)
                     {
                         // bind per mesh
-                        //总共只有1个集合. 而第一个集合的索引是1, 会不会有问题???
-                        m_rhi->cmdBindDescriptorSetsPFN(m_rhi->getCurrentCommandBuffer(),
-                                                        RHI_PIPELINE_BIND_POINT_GRAPHICS,
-                                                        m_render_pipelines[0].layout,
-                                                        1,
-                                                        1,
-                                                        &mesh->mesh_vertex_blending_descriptor_set,
-                                                        0,
-                                                        NULL);
+                        VkDescriptorSet DS =
+                            ((VulkanDescriptorSet*)mesh->mesh_vertex_blending_descriptor_set)->getResource();
+                        //看顶点shader, 里面的布局用了两个set, 这里绑定的是索引为1, 即第二个
+                        CB.BindDescriptorSets(
+                            Proxy.GetVkPipelineLayout(), DS, 1);
 
-                        RHIBuffer*     vertex_buffers[] = {mesh->mesh_vertex_position_buffer};
-                        RHIDeviceSize offsets[]        = {0};
-                        m_rhi->cmdBindVertexBuffersPFN(m_rhi->getCurrentCommandBuffer(), 0, 1, vertex_buffers, offsets);
-                        m_rhi->cmdBindIndexBufferPFN(m_rhi->getCurrentCommandBuffer(), mesh->mesh_index_buffer, 0, RHI_INDEX_TYPE_UINT16);
+                        // 绑定mesh的顶点和索引缓冲区
+                        VkBuffer VertBuff = ((VulkanBuffer*)mesh->mesh_vertex_position_buffer)->getResource();
+                        VkBuffer IndexBuff = ((VulkanBuffer*)mesh->mesh_vertex_position_buffer)->getResource();
+
+                        CB.BindVertexBuffer(VertBuff);
+                        CB.BindIndexBuffer(IndexBuff);
 
                         //平行光阴影, 每帧绘制64次DC
                         uint32_t drawcall_max_instance_count =
@@ -425,27 +423,13 @@ namespace Piccolo
                             // perdrawcall storage buffer
                             // 又重复利用了. Stage内存的开始部分. 64个model的mvp
                             // 开始通过不断的偏移End值, 往buffer写值
-                            uint32_t perdrawcall_dynamic_offset =
-                                roundUp(m_global_render_resource->_storage_buffer
-                                            ._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()],
-                                        m_global_render_resource->_storage_buffer._min_storage_buffer_offset_alignment);
-                            m_global_render_resource->_storage_buffer
-                                ._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()] =
-                                perdrawcall_dynamic_offset +
-                                sizeof(MeshDirectionalLightShadowPerdrawcallStorageBufferObject);
-                            assert(m_global_render_resource->_storage_buffer
-                                       ._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()] <=
-                                   (m_global_render_resource->_storage_buffer
-                                        ._global_upload_ringbuffers_begin[m_rhi->getCurrentFrameIndex()] +
-                                    m_global_render_resource->_storage_buffer
-                                        ._global_upload_ringbuffers_size[m_rhi->getCurrentFrameIndex()]));
-
+                            uint32_t perdrawcall_dynamic_offset = 0;
                             MeshDirectionalLightShadowPerdrawcallStorageBufferObject&
-                                perdrawcall_storage_buffer_object =
-                                    (*reinterpret_cast<MeshDirectionalLightShadowPerdrawcallStorageBufferObject*>(
-                                        reinterpret_cast<uintptr_t>(m_global_render_resource->_storage_buffer
-                                                                        ._global_upload_ringbuffer_memory_pointer) +
-                                        perdrawcall_dynamic_offset));
+                                perdrawcall_storage_buffer_object = StorageBuffer.GetObjectAtEndAddress<
+                                    MeshDirectionalLightShadowPerdrawcallStorageBufferObject>(
+                                    m_rhi->m_current_frame_index,
+                                    sizeof(MeshDirectionalLightShadowPerdrawcallStorageBufferObject),
+                                    perdrawcall_dynamic_offset);
 
                             //设置每个instance的model view matrix
                             for (uint32_t i = 0; i < current_instance_count; ++i)
@@ -472,28 +456,15 @@ namespace Piccolo
                             {
                                 // 接着重复利用. Stage内存的开始部分
                                 // 开始通过不断的偏移End值, 往buffer写值
-                                per_drawcall_vertex_blending_dynamic_offset = roundUp(
-                                    m_global_render_resource->_storage_buffer
-                                        ._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()],
-                                    m_global_render_resource->_storage_buffer._min_storage_buffer_offset_alignment);
-                                m_global_render_resource->_storage_buffer
-                                    ._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()] =
-                                    per_drawcall_vertex_blending_dynamic_offset +
-                                    sizeof(MeshDirectionalLightShadowPerdrawcallVertexBlendingStorageBufferObject);
-                                assert(m_global_render_resource->_storage_buffer
-                                           ._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()] <=
-                                       (m_global_render_resource->_storage_buffer
-                                            ._global_upload_ringbuffers_begin[m_rhi->getCurrentFrameIndex()] +
-                                        m_global_render_resource->_storage_buffer
-                                            ._global_upload_ringbuffers_size[m_rhi->getCurrentFrameIndex()]));
-
                                 MeshDirectionalLightShadowPerdrawcallVertexBlendingStorageBufferObject&
                                     per_drawcall_vertex_blending_storage_buffer_object =
-                                        (*reinterpret_cast<
-                                            MeshDirectionalLightShadowPerdrawcallVertexBlendingStorageBufferObject*>(
-                                            reinterpret_cast<uintptr_t>(m_global_render_resource->_storage_buffer
-                                                                            ._global_upload_ringbuffer_memory_pointer) +
-                                            per_drawcall_vertex_blending_dynamic_offset));
+                                        StorageBuffer.GetObjectAtEndAddress<
+                                            MeshDirectionalLightShadowPerdrawcallVertexBlendingStorageBufferObject>(
+                                            m_rhi->m_current_frame_index,
+                                            sizeof(
+                                                MeshDirectionalLightShadowPerdrawcallVertexBlendingStorageBufferObject),
+                                            per_drawcall_vertex_blending_dynamic_offset);
+
                                 for (uint32_t i = 0; i < current_instance_count; ++i)
                                 {
                                     if (mesh_nodes[drawcall_max_instance_count * drawcall_index + i].joint_matrices)
@@ -517,23 +488,12 @@ namespace Piccolo
                             }
 
                             // bind perdrawcall
-                            uint32_t dynamic_offsets[3] = {perframe_dynamic_offset,
+                            std::vector<uint32_t> dynamic_offsets = {perframe_dynamic_offset,
                                                            perdrawcall_dynamic_offset,
                                                            per_drawcall_vertex_blending_dynamic_offset};
-                            m_rhi->cmdBindDescriptorSetsPFN(m_rhi->getCurrentCommandBuffer(),
-                                                            RHI_PIPELINE_BIND_POINT_GRAPHICS,
-                                                            m_render_pipelines[0].layout,
-                                                            0,
-                                                            1,
-                                                            &m_descriptor_infos[0].descriptor_set,
-                                                            (sizeof(dynamic_offsets) / sizeof(dynamic_offsets[0])),
-                                                            dynamic_offsets);
-                            m_rhi->cmdDrawIndexedPFN(m_rhi->getCurrentCommandBuffer(),
-                                                     mesh->mesh_index_count,
-                                                     current_instance_count,
-                                                     0,
-                                                     0,
-                                                     0);
+                            CB.BindDescriptorSets(
+                                Proxy.GetVkPipelineLayout(), Proxy.GetVkDescriptorSet(), dynamic_offsets);
+                            CB.DrawIndexed(mesh->mesh_index_count, current_instance_count);
                         }
                     }
                 }
