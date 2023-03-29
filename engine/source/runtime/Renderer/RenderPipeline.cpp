@@ -1,6 +1,7 @@
 #include "RenderPipeline.h"
 
 #include "Passes/DirectionalLightPass.h"
+#include "Passes/MainCameraPass.h"
 #include "runtime/function/render/interface/vulkan/vulkan_rhi.h"
 
 #include "runtime/function/render/passes/color_grading_pass.h"
@@ -23,7 +24,7 @@ namespace Piccolo
     {
         m_point_light_shadow_pass = std::make_shared<PointLightShadowPass>();
         m_directional_light_pass  = std::make_shared<UDirectionalLightShadowPass>();
-        m_main_camera_pass        = std::make_shared<MainCameraPass>();
+        m_main_camera_pass        = std::make_shared<UMainCameraPass>();
         m_tone_mapping_pass       = std::make_shared<ToneMappingPass>();
         m_color_grading_pass      = std::make_shared<ColorGradingPass>();
         m_ui_pass                 = std::make_shared<UIPass>();
@@ -43,7 +44,7 @@ namespace Piccolo
 
         m_point_light_shadow_pass->setCommonInfo(pass_common_info);
         m_directional_light_pass->setCommonInfo(pass_common_info2);
-        m_main_camera_pass->setCommonInfo(pass_common_info);
+        m_main_camera_pass->setCommonInfo(pass_common_info2);
         m_tone_mapping_pass->setCommonInfo(pass_common_info);
         m_color_grading_pass->setCommonInfo(pass_common_info);
         m_ui_pass->setCommonInfo(pass_common_info);
@@ -55,8 +56,8 @@ namespace Piccolo
         m_point_light_shadow_pass->initialize(nullptr);
         m_directional_light_pass->initialize(nullptr);
 
-        std::shared_ptr<MainCameraPass> main_camera_pass = std::static_pointer_cast<MainCameraPass>(m_main_camera_pass);
-        std::shared_ptr<RenderPass>     _main_camera_pass = std::static_pointer_cast<RenderPass>(m_main_camera_pass);
+        std::shared_ptr<UMainCameraPass> main_camera_pass = std::static_pointer_cast<UMainCameraPass>(m_main_camera_pass);
+        std::shared_ptr<URenderPass>     _main_camera_pass = std::static_pointer_cast<URenderPass>(m_main_camera_pass);
         std::shared_ptr<ParticlePass> particle_pass = std::static_pointer_cast<ParticlePass>(m_particle_pass);
 
         ParticlePassInitInfo particle_init_info{};
@@ -68,7 +69,7 @@ namespace Piccolo
         main_camera_pass->m_directional_light_shadow_color_image_view =
             std::static_pointer_cast<URenderPass>(m_directional_light_pass)->m_framebuffer.attachments[0].view;
 
-        MainCameraPassInitInfo main_camera_init_info;
+        UMainCameraPassInitInfo main_camera_init_info;
         main_camera_init_info.enble_fxaa = init_info.enable_fxaa;
         main_camera_pass->setParticlePass(particle_pass);
         m_main_camera_pass->initialize(&main_camera_init_info);
@@ -77,9 +78,9 @@ namespace Piccolo
 
         std::vector<RHIDescriptorSetLayout*> descriptor_layouts = _main_camera_pass->getDescriptorSetLayouts();
         std::static_pointer_cast<PointLightShadowPass>(m_point_light_shadow_pass)
-            ->setPerMeshLayout(descriptor_layouts[MainCameraPass::LayoutType::_per_mesh]);
+            ->setPerMeshLayout(descriptor_layouts[UMainCameraPass::LayoutType::_per_mesh]);
         std::static_pointer_cast<UDirectionalLightShadowPass>(m_directional_light_pass)
-            ->setPerMeshLayout(descriptor_layouts[MainCameraPass::LayoutType::_per_mesh]);
+            ->setPerMeshLayout(descriptor_layouts[UMainCameraPass::LayoutType::_per_mesh]);
 
         m_point_light_shadow_pass->postInitialize();
         m_directional_light_pass->postInitialize();
@@ -109,7 +110,7 @@ namespace Piccolo
         m_combine_ui_pass->initialize(&combine_ui_init_info);
 
         PickPassInitInfo pick_init_info;
-        pick_init_info.per_mesh_layout = descriptor_layouts[MainCameraPass::LayoutType::_per_mesh];
+        pick_init_info.per_mesh_layout = descriptor_layouts[UMainCameraPass::LayoutType::_per_mesh];
         m_pick_pass->initialize(&pick_init_info);
 
         FXAAPassInitInfo fxaa_init_info;
@@ -150,9 +151,9 @@ namespace Piccolo
 
         static_cast<ParticlePass*>(m_particle_pass.get())
             ->setRenderCommandBufferHandle(
-                static_cast<MainCameraPass*>(m_main_camera_pass.get())->getRenderCommandBuffer());
+                static_cast<UMainCameraPass*>(m_main_camera_pass.get())->getRenderCommandBuffer());
 
-        static_cast<MainCameraPass*>(m_main_camera_pass.get())
+        static_cast<UMainCameraPass*>(m_main_camera_pass.get())
             ->draw(color_grading_pass,
                    fxaa_pass,
                    tone_mapping_pass,
@@ -170,7 +171,7 @@ namespace Piccolo
 
     void URenderPipeline::passUpdateAfterRecreateSwapchain()
     {
-        MainCameraPass&   main_camera_pass   = *(static_cast<MainCameraPass*>(m_main_camera_pass.get()));
+        UMainCameraPass&   main_camera_pass   = *(static_cast<UMainCameraPass*>(m_main_camera_pass.get()));
         ColorGradingPass& color_grading_pass = *(static_cast<ColorGradingPass*>(m_color_grading_pass.get()));
         FXAAPass&         fxaa_pass          = *(static_cast<FXAAPass*>(m_fxaa_pass.get()));
         ToneMappingPass&  tone_mapping_pass  = *(static_cast<ToneMappingPass*>(m_tone_mapping_pass.get()));
@@ -200,13 +201,13 @@ namespace Piccolo
 
     void URenderPipeline::setAxisVisibleState(bool state)
     {
-        MainCameraPass& main_camera_pass = *(static_cast<MainCameraPass*>(m_main_camera_pass.get()));
+        UMainCameraPass& main_camera_pass = *(static_cast<UMainCameraPass*>(m_main_camera_pass.get()));
         main_camera_pass.m_is_show_axis  = state;
     }
 
     void URenderPipeline::setSelectedAxis(size_t selected_axis)
     {
-        MainCameraPass& main_camera_pass = *(static_cast<MainCameraPass*>(m_main_camera_pass.get()));
+        UMainCameraPass& main_camera_pass = *(static_cast<UMainCameraPass*>(m_main_camera_pass.get()));
         main_camera_pass.m_selected_axis = selected_axis;
     }
 } // namespace Piccolo

@@ -1,4 +1,7 @@
 #include "RenderSystem.h"
+#include "RenderPass.h"
+
+#include "Passes/MainCameraPass.h"
 
 #include "runtime/core/base/macro.h"
 
@@ -15,7 +18,6 @@
 #include "runtime/function/global/global_context.h"
 #include "runtime/function/render/debugdraw/debug_draw_manager.h"
 
-#include "runtime/function/render/passes/main_camera_pass.h"
 #include "runtime/function/render/passes/particle_pass.h"
 
 #include "runtime/function/render/interface/vulkan/vulkan_rhi.h"
@@ -93,12 +95,12 @@ void URenderSystem::initialize(FRenderSystemInitInfo init_info)
 
     // descriptor set layout in main camera pass will be used when uploading resource
     std::static_pointer_cast<RenderResource>(m_render_resource)->m_mesh_descriptor_set_layout =
-        &static_cast<RenderPass*>(m_render_pipeline->m_main_camera_pass.get())
-             ->m_descriptor_infos[MainCameraPass::LayoutType::_per_mesh]
+        &static_cast<URenderPass*>(m_render_pipeline->m_main_camera_pass.get())
+             ->m_descriptor_infos[UMainCameraPass::LayoutType::_per_mesh]
              .layout;
     std::static_pointer_cast<RenderResource>(m_render_resource)->m_material_descriptor_set_layout =
-        &static_cast<RenderPass*>(m_render_pipeline->m_main_camera_pass.get())
-             ->m_descriptor_infos[MainCameraPass::LayoutType::_mesh_per_material]
+        &static_cast<URenderPass*>(m_render_pipeline->m_main_camera_pass.get())
+             ->m_descriptor_infos[UMainCameraPass::LayoutType::_mesh_per_material]
              .layout;
 }
 
