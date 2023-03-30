@@ -25,9 +25,17 @@ namespace Piccolo
     {
         URenderPass::initialize(nullptr);
 
+        //总结一句
+        // shader的输入imageview/buffer是通过描述符集绑定的
+        // shader的输出是subpass输出到Attachment附件的. 而这些Attachment会根据索引引用到FrameBuffer开辟的ImageView
         setupAttachments();
+        //创建了1个renderpass, 包含7个subpass
+        // 7个subpass对应了7个pipline, 其中4个在本类创建. 另外3个有独立的pass文件. color grading, tone maping, combine
+        // ui
+        //TODO 把非本pass关心的给移出去
         setupRenderPass();
         setupDescriptorSetLayout();
+        //创建了多个管线, pipeline和subpass一一对应
         setupPipelines();
         setupDescriptorSet();
         setupFramebufferDescriptorSet();
@@ -48,6 +56,7 @@ namespace Piccolo
 
     void UMainCameraPass::setupAttachments()
     {
+        //gbuffer用到的5个缓冲区 + 后处理用到的2个
         m_framebuffer.attachments.resize(_main_camera_pass_custom_attachment_count +
                                          _main_camera_pass_post_process_attachment_count);
 
@@ -57,75 +66,122 @@ namespace Piccolo
         m_framebuffer.attachments[_main_camera_pass_backup_buffer_odd].format  = RHI_FORMAT_R16G16B16A16_SFLOAT;
         m_framebuffer.attachments[_main_camera_pass_backup_buffer_even].format = RHI_FORMAT_R16G16B16A16_SFLOAT;
 
-        for (int buffer_index = 0; buffer_index < _main_camera_pass_custom_attachment_count; ++buffer_index)
+        //对上面5个创建的frame buffer创建image资源
+        //IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT表示图形数据的生存周期很短. 因此没必要写入设备内存
+        //IMAGE_USAGE_TRANSFER_SRC_BIT表示缓冲可以被用作内存传输操作的数据来源
+        for (int i = 0; i < _main_camera_pass_custom_attachment_count; ++i)
         {
-            if (buffer_index == _main_camera_pass_gbuffer_a)
+            VkImage Image;
+            VkDeviceMemory Mem;
+
+            if (i == _main_camera_pass_gbuffer_a)
             {
-                m_rhi->createImage(m_rhi->getSwapchainInfo().extent.width,
-                                   m_rhi->getSwapchainInfo().extent.height,
-                                   m_framebuffer.attachments[_main_camera_pass_gbuffer_a].format,
-                                   RHI_IMAGE_TILING_OPTIMAL,
-                                   RHI_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | RHI_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-                                       RHI_IMAGE_USAGE_TRANSFER_SRC_BIT,
-                                   RHI_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                                   m_framebuffer.attachments[_main_camera_pass_gbuffer_a].image,
-                                   m_framebuffer.attachments[_main_camera_pass_gbuffer_a].mem,
-                                   0,
-                                   1,
-                                   1);
+                VulkanUtil::createImage(m_rhi->m_physical_device,
+                                        m_rhi->m_device,
+                                        m_rhi->m_swapchain_extent.width,
+                                        m_rhi->m_swapchain_extent.height,
+                                        (VkFormat)m_framebuffer.attachments[i].format,
+                                        VK_IMAGE_TILING_OPTIMAL,
+                                        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
+                                            VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+                                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                                        Image,
+                                        Mem,
+                                        0,
+                                        1,
+                                        1);
             }
             else
             {
-                m_rhi->createImage(m_rhi->getSwapchainInfo().extent.width,
-                                   m_rhi->getSwapchainInfo().extent.height,
-                                   m_framebuffer.attachments[buffer_index].format,
-                                   RHI_IMAGE_TILING_OPTIMAL,
-                                   RHI_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | RHI_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
-                                       RHI_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT,
-                                   RHI_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                                   m_framebuffer.attachments[buffer_index].image,
-                                   m_framebuffer.attachments[buffer_index].mem,
-                                   0,
-                                   1,
-                                   1);
+                VulkanUtil::createImage(m_rhi->m_physical_device,
+                                        m_rhi->m_device,
+                                        m_rhi->m_swapchain_extent.width,
+                                        m_rhi->m_swapchain_extent.height,
+                                        (VkFormat)m_framebuffer.attachments[i].format,
+                                        VK_IMAGE_TILING_OPTIMAL,
+                                        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
+                                            VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT,
+                                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                                        Image,
+                                        Mem,
+                                        0,
+                                        1,
+                                        1);
             }
 
-            m_rhi->createImageView(m_framebuffer.attachments[buffer_index].image,
-                                   m_framebuffer.attachments[buffer_index].format,
-                                   RHI_IMAGE_ASPECT_COLOR_BIT,
-                                   RHI_IMAGE_VIEW_TYPE_2D,
-                                   1,
-                                   1,
-                                   m_framebuffer.attachments[buffer_index].view);
+            
+            VkImageView VI = VulkanUtil::createImageView(m_rhi->m_device,
+                                            Image,
+                                            (VkFormat)m_framebuffer.attachments[i].format,
+                                            VK_IMAGE_ASPECT_COLOR_BIT,
+                                            VK_IMAGE_VIEW_TYPE_2D,
+                                            1,
+                                            1);
+            
+            //TODO 兼容引擎
+            auto vim = new VulkanImage();
+            vim->setResource(Image);
+            m_framebuffer.attachments[i].image = vim;
+
+            auto MM = new VulkanDeviceMemory();
+            MM->setResource(Mem);
+            m_framebuffer.attachments[i].mem = MM;
+
+            auto VIV = new VulkanImageView();
+            VIV->setResource(VI);
+            m_framebuffer.attachments[i].view = VIV;
         }
 
+
+        //创建后处理Buffer, image usage flags和上面不一样
         m_framebuffer.attachments[_main_camera_pass_post_process_buffer_odd].format  = RHI_FORMAT_R16G16B16A16_SFLOAT;
         m_framebuffer.attachments[_main_camera_pass_post_process_buffer_even].format = RHI_FORMAT_R16G16B16A16_SFLOAT;
-        for (int attachment_index = _main_camera_pass_custom_attachment_count;
-             attachment_index <
+        for (int i = _main_camera_pass_custom_attachment_count;
+             i <
              _main_camera_pass_custom_attachment_count + _main_camera_pass_post_process_attachment_count;
-             ++attachment_index)
+             ++i)
         {
-            m_rhi->createImage(m_rhi->getSwapchainInfo().extent.width,
-                               m_rhi->getSwapchainInfo().extent.height,
-                               m_framebuffer.attachments[attachment_index].format,
-                               RHI_IMAGE_TILING_OPTIMAL,
-                               RHI_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | RHI_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
-                                   RHI_IMAGE_USAGE_SAMPLED_BIT,
-                               RHI_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                               m_framebuffer.attachments[attachment_index].image,
-                               m_framebuffer.attachments[attachment_index].mem,
-                               0,
-                               1,
-                               1);
+            VkImage        Image;
+            VkDeviceMemory Mem;
 
-            m_rhi->createImageView(m_framebuffer.attachments[attachment_index].image,
-                                   m_framebuffer.attachments[attachment_index].format,
-                                   RHI_IMAGE_ASPECT_COLOR_BIT,
-                                   RHI_IMAGE_VIEW_TYPE_2D,
-                                   1,
-                                   1,
-                                   m_framebuffer.attachments[attachment_index].view);
+
+
+            VulkanUtil::createImage(m_rhi->m_physical_device,
+                                    m_rhi->m_device,
+                                    m_rhi->m_swapchain_extent.width,
+                                    m_rhi->m_swapchain_extent.height,
+                                    (VkFormat)m_framebuffer.attachments[i].format,
+                                    VK_IMAGE_TILING_OPTIMAL,
+                                    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
+                                        VK_IMAGE_USAGE_SAMPLED_BIT,
+                                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                                    Image,
+                                    Mem,
+                                    0,
+                                    1,
+                                    1);
+
+
+            VkImageView VI = VulkanUtil::createImageView(m_rhi->m_device,
+                                                         Image,
+                                                         (VkFormat)m_framebuffer.attachments[i].format,
+                                                         VK_IMAGE_ASPECT_COLOR_BIT,
+                                                         VK_IMAGE_VIEW_TYPE_2D,
+                                                         1,
+                                                         1);
+
+            // TODO 兼容引擎
+            auto vim = new VulkanImage();
+            vim->setResource(Image);
+            m_framebuffer.attachments[i].image = vim;
+
+            auto MM = new VulkanDeviceMemory();
+            MM->setResource(Mem);
+            m_framebuffer.attachments[i].mem = MM;
+
+            auto VIV = new VulkanImageView();
+            VIV->setResource(VI);
+            m_framebuffer.attachments[i].view = VIV;
         }
     }
 

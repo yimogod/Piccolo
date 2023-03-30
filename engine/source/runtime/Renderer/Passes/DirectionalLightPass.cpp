@@ -148,7 +148,7 @@ namespace Piccolo
 
         Proxy.RenderPass.SetDependencyNum(1);
         auto& Dependency = Proxy.RenderPass.GetDependency();
-        Dependency.SetSubpass(0, 0, VK_SUBPASS_EXTERNAL);
+        Dependency.SetSubpass(0, VK_SUBPASS_EXTERNAL, 0);
         //就一个subpass, 依赖于之前pass的输出. 然后目标是自己的pass的输出
         Dependency.SetStageMask(
             0,

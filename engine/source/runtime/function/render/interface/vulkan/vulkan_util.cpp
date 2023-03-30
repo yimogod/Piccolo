@@ -191,8 +191,8 @@ namespace Piccolo
                                  VkImageTiling         image_tiling,
                                  VkImageUsageFlags     image_usage_flags,
                                  VkMemoryPropertyFlags memory_property_flags,
-                                 VkImage&              image,
-                                 VkDeviceMemory&       memory,
+                                 VkImage&              OutImage,
+                                 VkDeviceMemory&       OutMemory,
                                  VkImageCreateFlags    image_create_flags,
                                  uint32_t              array_layers,
                                  uint32_t              miplevels)
@@ -213,14 +213,14 @@ namespace Piccolo
         image_create_info.samples       = VK_SAMPLE_COUNT_1_BIT;
         image_create_info.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
 
-        if (vkCreateImage(device, &image_create_info, nullptr, &image) != VK_SUCCESS)
+        if (vkCreateImage(device, &image_create_info, nullptr, &OutImage) != VK_SUCCESS)
         {
             LOG_ERROR("failed to create image!");
             return;
         }
 
         VkMemoryRequirements memRequirements;
-        vkGetImageMemoryRequirements(device, image, &memRequirements);
+        vkGetImageMemoryRequirements(device, OutImage, &memRequirements);
 
         VkMemoryAllocateInfo allocInfo {};
         allocInfo.sType          = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -228,13 +228,13 @@ namespace Piccolo
         allocInfo.memoryTypeIndex =
             findMemoryType(physical_device, memRequirements.memoryTypeBits, memory_property_flags);
 
-        if (vkAllocateMemory(device, &allocInfo, nullptr, &memory) != VK_SUCCESS)
+        if (vkAllocateMemory(device, &allocInfo, nullptr, &OutMemory) != VK_SUCCESS)
         {
             LOG_ERROR("failed to allocate image memory!");
             return;
         }
 
-        vkBindImageMemory(device, image, memory, 0);
+        vkBindImageMemory(device, OutImage, OutMemory, 0);
     }
 
     VkImageView VulkanUtil::createImageView(VkDevice           device,

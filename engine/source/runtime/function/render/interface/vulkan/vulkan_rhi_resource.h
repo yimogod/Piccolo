@@ -126,7 +126,7 @@ namespace Piccolo
         {
             m_resource = res;
         }
-        VkDeviceMemory getResource() const
+        VkDeviceMemory getResource()
         {
             return m_resource;
         }
