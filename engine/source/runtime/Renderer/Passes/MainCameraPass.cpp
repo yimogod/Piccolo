@@ -144,8 +144,6 @@ namespace Piccolo
             VkImage        Image;
             VkDeviceMemory Mem;
 
-
-
             VulkanUtil::createImage(m_rhi->m_physical_device,
                                     m_rhi->m_device,
                                     m_rhi->m_swapchain_extent.width,
@@ -187,18 +185,38 @@ namespace Piccolo
 
     void UMainCameraPass::setupRenderPass()
     {
+        //创建render pass, 用了400多行代码
+        //需要 VkAttachmentDescription, VkAttachmentReference, VkSubpassDependency一系列数据
+        // VkAttachmentReference 就是 subpass 要输出到那个imageview--通过Index对应到FrameBuffer的ImageView索引
+        // VkAttachmentDescription 制定了输出格式和输出Layout--ShaderRead? 深度? 还是Present
+
+        //步骤
+        // 1. 创建 VkAttachmentDescription, 即attachments数组.
+        // 重要!!!这些Attachment关联的imageview是pixelshader进行输出的.
+        //       也就是说FrameBuffer里面包含的image都是ps的输出
+        //       也因此clearvalue对应的就是这些ps要输出的imageview. clear了才好重新写入.
+        //       但这些被写入的iamgeview, 可以作为其他pass的uniform使用
+        // 2. 根据不同的 VkAttachmentDescription 创建 VkAttachmentReference 数组
+        // 3. 根据VkAttachmentReference 创建 Subpass
+        // 4. 设置SubPass依赖关系
+        // 5. 创建RenderPass
+
+        // RenderPass用到了9个Attachment, 下面的代码就是依次创建了9个attachment描述符, 和真实的image资产关联了起来
+
+        //VK_ATTACHMENT_STORE_OP_STORE表示写入的时候会保存到显存. 用于后面使用
         RHIAttachmentDescription attachments[_main_camera_pass_attachment_count] = {};
 
         RHIAttachmentDescription& gbuffer_normal_attachment_description = attachments[_main_camera_pass_gbuffer_a];
         gbuffer_normal_attachment_description.format  = m_framebuffer.attachments[_main_camera_pass_gbuffer_a].format;
         gbuffer_normal_attachment_description.samples = RHI_SAMPLE_COUNT_1_BIT;
-        gbuffer_normal_attachment_description.loadOp  = RHI_ATTACHMENT_LOAD_OP_CLEAR;
+        gbuffer_normal_attachment_description.loadOp  = RHI_ATTACHMENT_LOAD_OP_CLEAR; //渲染之前对附件数据的操作, 使用常量清理
         gbuffer_normal_attachment_description.storeOp = RHI_ATTACHMENT_STORE_OP_STORE;
         gbuffer_normal_attachment_description.stencilLoadOp  = RHI_ATTACHMENT_LOAD_OP_DONT_CARE;
         gbuffer_normal_attachment_description.stencilStoreOp = RHI_ATTACHMENT_STORE_OP_DONT_CARE;
         gbuffer_normal_attachment_description.initialLayout  = RHI_IMAGE_LAYOUT_UNDEFINED;
         gbuffer_normal_attachment_description.finalLayout    = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
+        // BufferB 用来存储金属度, 粗糙度, shading model id
         RHIAttachmentDescription& gbuffer_metallic_roughness_shadingmodeid_attachment_description =
             attachments[_main_camera_pass_gbuffer_b];
         gbuffer_metallic_roughness_shadingmodeid_attachment_description.format =
@@ -214,23 +232,28 @@ namespace Piccolo
         gbuffer_metallic_roughness_shadingmodeid_attachment_description.finalLayout =
             RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
+        // BufferC是BaseColor, layout是ShaderReadOnly
         RHIAttachmentDescription& gbuffer_albedo_attachment_description = attachments[_main_camera_pass_gbuffer_c];
         gbuffer_albedo_attachment_description.format  = m_framebuffer.attachments[_main_camera_pass_gbuffer_c].format;
         gbuffer_albedo_attachment_description.samples = RHI_SAMPLE_COUNT_1_BIT;
         gbuffer_albedo_attachment_description.loadOp  = RHI_ATTACHMENT_LOAD_OP_CLEAR;
-        gbuffer_albedo_attachment_description.storeOp = RHI_ATTACHMENT_STORE_OP_DONT_CARE;
+        gbuffer_albedo_attachment_description.storeOp        = RHI_ATTACHMENT_STORE_OP_STORE;
         gbuffer_albedo_attachment_description.stencilLoadOp  = RHI_ATTACHMENT_LOAD_OP_DONT_CARE;
         gbuffer_albedo_attachment_description.stencilStoreOp = RHI_ATTACHMENT_STORE_OP_DONT_CARE;
         gbuffer_albedo_attachment_description.initialLayout  = RHI_IMAGE_LAYOUT_UNDEFINED;
         gbuffer_albedo_attachment_description.finalLayout    = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
+
+        // odd奇数 layout是ShaderReadOnly
         RHIAttachmentDescription& backup_odd_color_attachment_description =
             attachments[_main_camera_pass_backup_buffer_odd];
         backup_odd_color_attachment_description.format =
             m_framebuffer.attachments[_main_camera_pass_backup_buffer_odd].format;
         backup_odd_color_attachment_description.samples        = RHI_SAMPLE_COUNT_1_BIT;
         backup_odd_color_attachment_description.loadOp         = RHI_ATTACHMENT_LOAD_OP_CLEAR;
-        backup_odd_color_attachment_description.storeOp        = RHI_ATTACHMENT_STORE_OP_DONT_CARE;
+        // IMPORTANT 我草. 这个如果设置为DoNotCare, 给外部用的话, 就特么会花屏,
+        // 这个问题的发现还是通过RenderDoc的图片输出发现的, 
+        backup_odd_color_attachment_description.storeOp        = RHI_ATTACHMENT_STORE_OP_STORE;
         backup_odd_color_attachment_description.stencilLoadOp  = RHI_ATTACHMENT_LOAD_OP_DONT_CARE;
         backup_odd_color_attachment_description.stencilStoreOp = RHI_ATTACHMENT_STORE_OP_DONT_CARE;
         backup_odd_color_attachment_description.initialLayout  = RHI_IMAGE_LAYOUT_UNDEFINED;
