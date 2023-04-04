@@ -1,19 +1,18 @@
 #pragma once
-
-#include "runtime/function/render/render_pass.h"
+#include "runtime/Renderer/RenderPass.h"
 
 namespace Piccolo
 {
-    struct ColorGradingPassInitInfo : RenderPassInitInfo
+    struct ColorGradingPassInitInfo : FRenderPassInitInfo
     {
         RHIRenderPass* render_pass;
         RHIImageView* input_attachment;
     };
 
-    class ColorGradingPass : public RenderPass
+    class ColorGradingPass : public URenderPass
     {
     public:
-        void initialize(const RenderPassInitInfo* init_info) override final;
+        void initialize(const FRenderPassInitInfo* init_info) override final;
         void draw() override final;
 
         void updateAfterFramebufferRecreate(RHIImageView* input_attachment);

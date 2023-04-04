@@ -2,7 +2,7 @@
 // TODO 引擎修改暂时
 #include "Renderer/RenderPass.h"
 #include "runtime/function/render/render_helper.h"
-#include "runtime/function/render/render_pass.h"
+#include "runtime/Renderer/RenderPass.h"
 #include "runtime/function/render/render_resource.h"
 
 namespace Piccolo
@@ -23,12 +23,6 @@ namespace Piccolo
 
     void RenderScene::setVisibleNodesReference()
     {
-        RenderPass::m_visiable_nodes.p_directional_light_visible_mesh_nodes = &m_directional_light_visible_mesh_nodes;
-        RenderPass::m_visiable_nodes.p_point_lights_visible_mesh_nodes      = &m_point_lights_visible_mesh_nodes;
-        RenderPass::m_visiable_nodes.p_main_camera_visible_mesh_nodes       = &m_main_camera_visible_mesh_nodes;
-        RenderPass::m_visiable_nodes.p_axis_node                            = &m_axis_node;
-
-        // TODO 引擎修改暂时
         URenderPass::m_visiable_nodes.p_directional_light_visible_mesh_nodes = &m_directional_light_visible_mesh_nodes;
         URenderPass::m_visiable_nodes.p_point_lights_visible_mesh_nodes      = &m_point_lights_visible_mesh_nodes;
         URenderPass::m_visiable_nodes.p_main_camera_visible_mesh_nodes       = &m_main_camera_visible_mesh_nodes;

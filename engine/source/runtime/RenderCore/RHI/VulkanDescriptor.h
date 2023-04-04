@@ -6,7 +6,7 @@
 class FVulkanDescriptorSet;
 
 //描述符布局, 就是一对shader, 包含所有的vs ps所需的所有的uniform/texture的槽位信息
-//简单的不太对的总结一下. 描述符集和Shader密切相关.描述的是shader的buffer的格式和槽位信息
+//通俗点说, 就是shader中用到的输入输出的资源的排布
 //而pipeline布局其实是由描述符布局数组构成. 之前也可以认为pipeline和shader就是一一对应的
 //简单点理解, 一个描述符就是shader用的数据的描述. Layout布局的是绑定, 也就是说描述符集布局的对象是描述符
 

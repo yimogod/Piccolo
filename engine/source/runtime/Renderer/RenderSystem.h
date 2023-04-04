@@ -4,12 +4,14 @@
 #include "runtime/function/render/render_guid_allocator.h"
 #include "runtime/function/render/render_swap_context.h"
 #include "runtime/function/render/render_type.h"
+#include "RenderPipelineBase.h"
+#include "RenderCore/VulkanProxy.h"
 
 #include <array>
 #include <memory>
 #include <optional>
 
-#include "RenderCore/VulkanProxy.h"
+
 
 namespace Piccolo
 {
@@ -58,7 +60,6 @@ public:
 
     void      initializeUIRenderBackend(WindowUI* window_ui);
     void      updateEngineContentViewport(float offset_x, float offset_y, float width, float height);
-    uint32_t  getGuidOfPickedMesh(const Vector2& picked_uv);
     GObjectID getGObjectIDByMeshID(uint32_t mesh_id) const;
 
     FEngineContentViewport getEngineContentViewport() const;
@@ -81,6 +82,7 @@ private:
     std::shared_ptr<RenderResourceBase> m_render_resource;
     std::shared_ptr<URenderPipelineBase> m_render_pipeline;
 
+    //从逻辑线程获取数据到渲染线程
     void processSwapData();
 };
 } // namespace Piccolo

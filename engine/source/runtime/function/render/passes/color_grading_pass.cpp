@@ -1,3 +1,4 @@
+#include "runtime/Renderer/RenderPass.h"
 #include "runtime/function/render/passes/color_grading_pass.h"
 
 #include "runtime/function/render/interface/vulkan/vulkan_rhi.h"
@@ -8,11 +9,12 @@
 
 #include <stdexcept>
 
+
 namespace Piccolo
 {
-    void ColorGradingPass::initialize(const RenderPassInitInfo* init_info)
+    void ColorGradingPass::initialize(const FRenderPassInitInfo* init_info)
     {
-        RenderPass::initialize(nullptr);
+        URenderPass::initialize(nullptr);
 
         const ColorGradingPassInitInfo* _init_info = static_cast<const ColorGradingPassInitInfo*>(init_info);
         m_framebuffer.render_pass                  = _init_info->render_pass;
@@ -29,6 +31,7 @@ namespace Piccolo
 
         RHIDescriptorSetLayoutBinding post_process_global_layout_bindings[2] = {};
 
+        //tone mapping的输出
         RHIDescriptorSetLayoutBinding& post_process_global_layout_input_attachment_binding =
             post_process_global_layout_bindings[0];
         post_process_global_layout_input_attachment_binding.binding         = 0;
@@ -36,6 +39,7 @@ namespace Piccolo
         post_process_global_layout_input_attachment_binding.descriptorCount = 1;
         post_process_global_layout_input_attachment_binding.stageFlags      = RHI_SHADER_STAGE_FRAGMENT_BIT;
 
+        //色调映射的纹理
         RHIDescriptorSetLayoutBinding& post_process_global_layout_LUT_binding = post_process_global_layout_bindings[1];
         post_process_global_layout_LUT_binding.binding                       = 1;
         post_process_global_layout_LUT_binding.descriptorType  = RHI_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -176,7 +180,7 @@ namespace Piccolo
         pipelineInfo.pDepthStencilState  = &depth_stencil_create_info;
         pipelineInfo.layout              = m_render_pipelines[0].layout;
         pipelineInfo.renderPass          = m_framebuffer.render_pass;
-        pipelineInfo.subpass             = _main_camera_subpass_color_grading;
+        pipelineInfo.subpass             = E_main_camera_subpass_color_grading;
         pipelineInfo.basePipelineHandle  = RHI_NULL_HANDLE;
         pipelineInfo.pDynamicState       = &dynamic_state_create_info;
 

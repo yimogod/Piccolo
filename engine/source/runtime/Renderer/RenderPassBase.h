@@ -18,7 +18,6 @@ namespace Piccolo
         std::shared_ptr<RenderResourceBase> render_resource;
     };
 
-    //TODO 这个目前用于兼容, 回头会删掉
     class URenderPassBase
     {
     public:

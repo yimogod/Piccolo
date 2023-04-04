@@ -4,7 +4,7 @@
 #include <vector>
 #include "runtime/function/global/global_context.h"
 #include "runtime/resource/config_manager/config_manager.h"
-#include "runtime/function/render/render_system.h"
+#include "runtime/Renderer/RenderSystem.h"
 #include "runtime/function/render/interface/rhi.h"
 
 namespace Piccolo

@@ -3,7 +3,7 @@
 #include "runtime/engine.h"
 #include "runtime/function/global/global_context.h"
 #include "runtime/function/render/render_camera.h"
-#include "runtime/function/render/render_system.h"
+#include "runtime/Renderer/RenderSystem.h"
 
 #include "editor/include/editor_global_context.h"
 #include "editor/include/editor_input_manager.h"

@@ -3,7 +3,7 @@
 #include "editor/include/editor_input_manager.h"
 #include "editor/include/editor_scene_manager.h"
 
-#include "runtime/function/render/render_system.h"
+#include "runtime/Renderer/RenderSystem.h"
 #include "runtime/function/render/window_system.h"
 
 namespace Piccolo

@@ -41,7 +41,6 @@ namespace Piccolo
         E_main_camera_subpass_forward_lighting,
         E_main_camera_subpass_tone_mapping,
         E_main_camera_subpass_color_grading,
-        E_main_camera_subpass_fxaa,
         E_main_camera_subpass_ui,
         E_main_camera_subpass_combine_ui,
         E_main_camera_subpass_count
@@ -100,10 +99,10 @@ namespace Piccolo
             RHIPipeline*       pipeline;
         };
 
+        //这个pass可能用到的全局资源
         GlobalRenderResource* m_global_render_resource {nullptr};
 
-        // main camera pass有8描述符个, 其他的pass只有一个. 
-        //注意, 这里的
+        //这个pass的用到的shader的布局信息
         std::vector<FDescriptor>         m_descriptor_infos;
         // 4个渲染管线? 忘记啥意思了. 一个subpass对应一个pipeline?
         std::vector<FRenderPipelineBase> m_render_pipelines;
@@ -119,6 +118,7 @@ namespace Piccolo
         virtual std::vector<RHIImageView*>           getFramebufferImageViews() const;
         virtual std::vector<RHIDescriptorSetLayout*> getDescriptorSetLayouts() const;
 
+        //可见对象
         static FVisiableNodes m_visiable_nodes;
 
     protected:

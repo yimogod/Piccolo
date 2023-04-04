@@ -7,8 +7,6 @@
 #include "runtime/function/render/interface/vulkan/vulkan_rhi.h"
 #include "runtime/function/render/interface/vulkan/vulkan_util.h"
 
-#include "runtime/function/render/passes/main_camera_pass.h"
-
 #include "runtime/core/base/macro.h"
 
 #include <stdexcept>

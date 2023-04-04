@@ -12,11 +12,10 @@
 #include "runtime/engine.h"
 #include "runtime/function/framework/world/world_manager.h"
 #include "runtime/function/input/input_system.h"
-#include "runtime/function/particle/particle_manager.h"
 #include "runtime/function/physics/physics_manager.h"
 #include "runtime/function/render/debugdraw/debug_draw_manager.h"
 #include "runtime/function/render/render_debug_config.h"
-#include "runtime/function/render/render_system.h"
+#include "runtime/Renderer/RenderSystem.h"
 #include "runtime/function/render/window_system.h"
 
 #include "runtime/Renderer/RenderSystem.h"
@@ -48,9 +47,6 @@ namespace Piccolo
 
         m_input_system = std::make_shared<InputSystem>();
         m_input_system->initialize();
-
-        m_particle_manager = std::make_shared<ParticleManager>();
-        m_particle_manager->initialize();
 
         m_render_system = std::make_shared<URenderSystem>();
         FRenderSystemInitInfo render_init_info;

@@ -11,7 +11,7 @@
 #include "runtime/function/input/input_system.h"
 
 #include "runtime/function/render/render_camera.h"
-#include "runtime/function/render/render_system.h"
+#include "runtime/Renderer/RenderSystem.h"
 #include "runtime/function/render/window_system.h"
 
 namespace Piccolo
@@ -283,10 +283,10 @@ namespace Piccolo
             {
                 Vector2 picked_uv((m_mouse_x - m_engine_window_pos.x) / m_engine_window_size.x,
                                   (m_mouse_y - m_engine_window_pos.y) / m_engine_window_size.y);
-                size_t  select_mesh_id = g_editor_global_context.m_scene_manager->getGuidOfPickedMesh(picked_uv);
+                //size_t  select_mesh_id = g_editor_global_context.m_scene_manager->getGuidOfPickedMesh(picked_uv);
 
-                size_t gobject_id = g_editor_global_context.m_render_system->getGObjectIDByMeshID(select_mesh_id);
-                g_editor_global_context.m_scene_manager->onGObjectSelected(gobject_id);
+                //size_t gobject_id = g_editor_global_context.m_render_system->getGObjectIDByMeshID(select_mesh_id);
+                //g_editor_global_context.m_scene_manager->onGObjectSelected(gobject_id);
             }
         }
     }

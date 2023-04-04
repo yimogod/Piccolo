@@ -15,9 +15,9 @@
 
 namespace Piccolo
 {
-    void PointLightShadowPass::initialize(const RenderPassInitInfo* init_info)
+    void PointLightShadowPass::initialize(const FRenderPassInitInfo* init_info)
     {
-        RenderPass::initialize(nullptr);
+        URenderPass::initialize(nullptr);
 
         setupAttachments();
         setupRenderPass();

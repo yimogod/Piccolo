@@ -9,7 +9,7 @@
 #include "runtime/function/global/global_context.h"
 
 #include "runtime/function/render/render_swap_context.h"
-#include "runtime/function/render/render_system.h"
+#include "runtime/Renderer/RenderSystem.h"
 
 namespace Piccolo
 {

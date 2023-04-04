@@ -13,7 +13,7 @@
 #include "runtime/function/framework/world/world_manager.h"
 #include "runtime/function/input/input_system.h"
 #include "runtime/function/render/render_camera.h"
-#include "runtime/function/render/render_system.h"
+#include "runtime/Renderer/RenderSystem.h"
 
 namespace Piccolo
 {
@@ -571,8 +571,4 @@ namespace Piccolo
             {m_translation_axis.m_mesh_data, m_rotation_axis.m_mesh_data, m_scale_aixs.m_mesh_data});
     }
 
-    size_t EditorSceneManager::getGuidOfPickedMesh(const Vector2& picked_uv) const
-    {
-        return g_editor_global_context.m_render_system->getGuidOfPickedMesh(picked_uv);
-    }
 } // namespace Piccolo

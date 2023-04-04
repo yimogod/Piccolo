@@ -1,20 +1,20 @@
 #pragma once
 
-#include "runtime/function/render/render_pass.h"
+#include "runtime/Renderer/RenderPass.h"
 
 namespace Piccolo
 {
-    struct CombineUIPassInitInfo : RenderPassInitInfo
+    struct CombineUIPassInitInfo : FRenderPassInitInfo
     {
         RHIRenderPass* render_pass;
         RHIImageView*  scene_input_attachment;
         RHIImageView*  ui_input_attachment;
     };
 
-    class CombineUIPass : public RenderPass
+    class CombineUIPass : public URenderPass
     {
     public:
-        void initialize(const RenderPassInitInfo* init_info) override final;
+        void initialize(const FRenderPassInitInfo* init_info) override final;
         void draw() override final;
 
         void updateAfterFramebufferRecreate(RHIImageView* scene_input_attachment, RHIImageView* ui_input_attachment);

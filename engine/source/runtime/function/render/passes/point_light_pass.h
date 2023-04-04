@@ -1,15 +1,15 @@
 #pragma once
 
-#include "runtime/function/render/render_pass.h"
+#include "runtime/Renderer/RenderPass.h"
 
 namespace Piccolo
 {
     class RenderResourceBase;
 
-    class PointLightShadowPass : public RenderPass
+    class PointLightShadowPass : public URenderPass
     {
     public:
-        void initialize(const RenderPassInitInfo* init_info) override final;
+        void initialize(const FRenderPassInitInfo* init_info) override final;
         void postInitialize() override final;
         void preparePassData(std::shared_ptr<RenderResourceBase> render_resource) override final;
         void draw() override final;

@@ -11,9 +11,9 @@
 
 namespace Piccolo
 {
-    void UIPass::initialize(const RenderPassInitInfo* init_info)
+    void UIPass::initialize(const FRenderPassInitInfo* init_info)
     {
-        RenderPass::initialize(nullptr);
+        URenderPass::initialize(nullptr);
 
         m_framebuffer.render_pass = static_cast<const UIPassInitInfo*>(init_info)->render_pass;
     }
@@ -30,7 +30,7 @@ namespace Piccolo
         init_info.QueueFamily               = m_rhi->getQueueFamilyIndices().graphics_family.value();
         init_info.Queue                     = ((VulkanQueue*)m_rhi->getGraphicsQueue())->getResource();
         init_info.DescriptorPool            = std::static_pointer_cast<VulkanRHI>(m_rhi)->m_vk_descriptor_pool;
-        init_info.Subpass                   = _main_camera_subpass_ui;
+        init_info.Subpass                   = E_main_camera_subpass_ui;
         
         // may be different from the real swapchain image count
         // see ImGui_ImplVulkanH_GetMinImageCountFromPresentMode

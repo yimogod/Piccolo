@@ -47,7 +47,6 @@ namespace Piccolo
 
         void setEditorCamera(std::shared_ptr<RenderCamera> camera) { m_camera = camera; }
         void uploadAxisResource();
-        size_t getGuidOfPickedMesh(const Vector2& picked_uv) const;
 
     public:
         std::shared_ptr<RenderCamera> getEditorCamera() { return m_camera; };

@@ -21,7 +21,7 @@
 #include "runtime/function/global/global_context.h"
 #include "runtime/function/input/input_system.h"
 #include "runtime/function/render/render_camera.h"
-#include "runtime/function/render/render_system.h"
+#include "runtime/Renderer/RenderSystem.h"
 #include "runtime/function/render/window_system.h"
 #include "runtime/function/render/render_debug_config.h"
 

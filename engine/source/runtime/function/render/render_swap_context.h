@@ -1,7 +1,5 @@
 #pragma once
 
-#include "runtime/function/particle/emitter_id_allocator.h"
-#include "runtime/function/particle/particle_desc.h"
 #include "runtime/function/render/render_camera.h"
 #include "runtime/function/render/render_object.h"
 
@@ -29,7 +27,9 @@ namespace Piccolo
 
     struct LevelResourceDesc
     {
+        //天空盒
         LevelIBLResourceDesc          m_ibl_resource_desc;
+        //color grading贴图
         LevelColorGradingResourceDesc m_color_grading_resource_desc;
     };
 
@@ -52,51 +52,19 @@ namespace Piccolo
         GameObjectDesc& getNextProcessObject();
     };
 
-    struct ParticleSubmitRequest
-    {
-        std::vector<ParticleEmitterDesc> m_emitter_descs;
-
-        void add(ParticleEmitterDesc& desc);
-
-        unsigned int getEmitterCount() const;
-
-        const ParticleEmitterDesc& getEmitterDesc(unsigned int index);
-    };
-
-    struct EmitterTickRequest
-    {
-        std::vector<ParticleEmitterID> m_emitter_indices;
-    };
-
-    struct EmitterTransformRequest
-    {
-        std::vector<ParticleEmitterTransformDesc> m_transform_descs;
-
-        void add(ParticleEmitterTransformDesc& desc);
-
-        void clear();
-
-        unsigned int getEmitterCount() const;
-
-        const ParticleEmitterTransformDesc& getNextEmitterTransformDesc(unsigned int index);
-    };
-
     struct RenderSwapData
     {
+        //指定新的天空盒和color grading的贴图
         std::optional<LevelResourceDesc>       m_level_resource_desc;
+        //要添加的GameObject
         std::optional<GameObjectResourceDesc>  m_game_object_resource_desc;
+        //要删除的GameObject
         std::optional<GameObjectResourceDesc>  m_game_object_to_delete;
+        //更新相机参数
         std::optional<CameraSwapData>          m_camera_swap_data;
-        std::optional<ParticleSubmitRequest>   m_particle_submit_request;
-        std::optional<EmitterTickRequest>      m_emitter_tick_request;
-        std::optional<EmitterTransformRequest> m_emitter_transform_request;
 
         void addDirtyGameObject(GameObjectDesc&& desc);
         void addDeleteGameObject(GameObjectDesc&& desc);
-
-        void addNewParticleEmitter(ParticleEmitterDesc& desc);
-        void addTickParticleEmitter(ParticleEmitterID id);
-        void updateParticleTransform(ParticleEmitterTransformDesc& desc);
     };
 
     enum SwapDataType : uint8_t
@@ -116,9 +84,6 @@ namespace Piccolo
         void            resetGameObjectResourceSwapData();
         void            resetGameObjectToDelete();
         void            resetCameraSwapData();
-        void            resetPartilceBatchSwapData();
-        void            resetEmitterTickSwapData();
-        void            resetEmitterTransformSwapData();
 
     private:
         uint8_t        m_logic_swap_data_index {LogicSwapDataType};

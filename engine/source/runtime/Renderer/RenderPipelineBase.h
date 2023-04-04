@@ -1,7 +1,6 @@
 #pragma once
 
 #include "runtime/core/math/vector2.h"
-#include "runtime/function/render/render_pass_base.h"
 
 #include <memory>
 #include <vector>
@@ -37,22 +36,18 @@ namespace Piccolo
         virtual void deferredRender(std::shared_ptr<RHI> rhi, std::shared_ptr<RenderResourceBase> render_resource);
 
         void             initializeUIRenderBackend(WindowUI* window_ui);
-        virtual uint32_t getGuidOfPickedMesh(const Vector2& picked_uv) = 0;
 
         std::shared_ptr<RHI> m_rhi;
     public:
         
         //构成此渲染的各个pass
         std::shared_ptr<URenderPassBase> m_directional_light_pass;
-        std::shared_ptr<RenderPassBase> m_point_light_shadow_pass;
+        std::shared_ptr<URenderPassBase> m_point_light_shadow_pass;
         std::shared_ptr<URenderPassBase> m_main_camera_pass;
-        std::shared_ptr<RenderPassBase> m_color_grading_pass;
-        std::shared_ptr<RenderPassBase> m_fxaa_pass;
-        std::shared_ptr<RenderPassBase> m_tone_mapping_pass;
-        std::shared_ptr<RenderPassBase> m_ui_pass;
-        std::shared_ptr<RenderPassBase> m_combine_ui_pass;
-        std::shared_ptr<RenderPassBase> m_pick_pass;
-        std::shared_ptr<RenderPassBase> m_particle_pass;
+        std::shared_ptr<URenderPassBase> m_color_grading_pass;
+        std::shared_ptr<URenderPassBase> m_tone_mapping_pass;
+        std::shared_ptr<URenderPassBase> m_ui_pass;
+        std::shared_ptr<URenderPassBase> m_combine_ui_pass;
 
     };
 } // namespace Piccolo

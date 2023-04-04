@@ -4,6 +4,7 @@
 
 namespace Piccolo
 {
+    //引擎逻辑段的管线, 概念更广义. 表示整个引擎的渲染的全过程, 和Vulkan的Pipeline完全不一样
     class URenderPipeline : public URenderPipelineBase
     {
     public:
@@ -13,8 +14,6 @@ namespace Piccolo
                                     std::shared_ptr<RenderResourceBase> render_resource) override final;
 
         void passUpdateAfterRecreateSwapchain();
-
-        virtual uint32_t getGuidOfPickedMesh(const Vector2& picked_uv) override final;
 
         void setAxisVisibleState(bool state);
 

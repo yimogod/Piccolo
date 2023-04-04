@@ -10,9 +10,9 @@
 
 namespace Piccolo
 {
-    void CombineUIPass::initialize(const RenderPassInitInfo* init_info)
+    void CombineUIPass::initialize(const FRenderPassInitInfo* init_info)
     {
-        RenderPass::initialize(nullptr);
+        URenderPass::initialize(nullptr);
 
         const CombineUIPassInitInfo* _init_info = static_cast<const CombineUIPassInitInfo*>(init_info);
         m_framebuffer.render_pass               = _init_info->render_pass;
@@ -177,7 +177,7 @@ namespace Piccolo
         pipelineInfo.pDepthStencilState  = &depth_stencil_create_info;
         pipelineInfo.layout              = m_render_pipelines[0].layout;
         pipelineInfo.renderPass          = m_framebuffer.render_pass;
-        pipelineInfo.subpass             = _main_camera_subpass_combine_ui;
+        pipelineInfo.subpass             = E_main_camera_subpass_combine_ui;
         pipelineInfo.basePipelineHandle  = RHI_NULL_HANDLE;
         pipelineInfo.pDynamicState       = &dynamic_state_create_info;
 

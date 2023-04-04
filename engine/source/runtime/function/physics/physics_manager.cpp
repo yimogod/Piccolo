@@ -6,7 +6,7 @@
 #include "runtime/function/global/global_context.h"
 #include "runtime/function/physics/jolt/utils.h"
 #include "runtime/function/physics/physics_scene.h"
-#include "runtime/function/render/render_system.h"
+#include "runtime/Renderer/RenderSystem.h"
 
 #ifdef ENABLE_PHYSICS_DEBUG_RENDERER
 #include "TestFramework.h"

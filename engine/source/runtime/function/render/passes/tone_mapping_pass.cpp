@@ -10,9 +10,9 @@
 
 namespace Piccolo
 {
-    void ToneMappingPass::initialize(const RenderPassInitInfo* init_info)
+    void ToneMappingPass::initialize(const FRenderPassInitInfo* init_info)
     {
-        RenderPass::initialize(nullptr);
+        URenderPass::initialize(nullptr);
 
         const ToneMappingPassInitInfo* _init_info = static_cast<const ToneMappingPassInitInfo*>(init_info);
         m_framebuffer.render_pass                 = _init_info->render_pass;
@@ -169,7 +169,7 @@ namespace Piccolo
         pipelineInfo.pDepthStencilState  = &depth_stencil_create_info;
         pipelineInfo.layout              = m_render_pipelines[0].layout;
         pipelineInfo.renderPass          = m_framebuffer.render_pass;
-        pipelineInfo.subpass             = _main_camera_subpass_tone_mapping;
+        pipelineInfo.subpass             = E_main_camera_subpass_tone_mapping;
         pipelineInfo.basePipelineHandle  = RHI_NULL_HANDLE;
         pipelineInfo.pDynamicState       = &dynamic_state_create_info;
 

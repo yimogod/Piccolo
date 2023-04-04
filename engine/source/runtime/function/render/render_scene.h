@@ -40,6 +40,7 @@ namespace Piccolo
         void clear();
 
         // update visible objects in each frame
+        // 为各个pass筛选自己所需的数据
         void updateVisibleObjects(std::shared_ptr<RenderResource> render_resource,
                                   std::shared_ptr<RenderCamera>   camera);
 

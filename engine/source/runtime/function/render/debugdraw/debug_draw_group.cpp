@@ -1,7 +1,7 @@
 #include "debug_draw_group.h"
 #include <vector>
 #include "runtime/function/global/global_context.h"
-#include "runtime/function/render/render_system.h"
+#include "runtime/Renderer/RenderSystem.h"
 
 namespace Piccolo
 {

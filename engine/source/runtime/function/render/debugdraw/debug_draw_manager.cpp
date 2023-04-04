@@ -1,6 +1,6 @@
 #include "debug_draw_manager.h"
 #include "runtime/function/global/global_context.h"
-#include "runtime/function/render/render_system.h"
+#include "runtime/Renderer/RenderSystem.h"
 #include "runtime/core/math/math_headers.h"
 
 namespace Piccolo
