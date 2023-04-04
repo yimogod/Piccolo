@@ -33,7 +33,6 @@ namespace Piccolo
 
     public:
         void registerInput();
-        void updateCursorOnAxis(Vector2 cursor_uv);
         void processEditorCommand();
         void onKeyInEditorMode(int key, int scancode, int action, int mods);
 
@@ -63,7 +62,6 @@ namespace Piccolo
         float   m_mouse_y {0.0f};
         float   m_camera_speed {0.05f};
 
-        size_t       m_cursor_on_axis {3};
         unsigned int m_editor_command {0};
     };
 } // namespace Piccolo

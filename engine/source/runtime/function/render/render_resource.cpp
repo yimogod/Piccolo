@@ -121,11 +121,6 @@ namespace Piccolo
         Vector3  ambient_light = render_scene->m_ambient_light.m_irradiance;
         uint32_t point_light_num = static_cast<uint32_t>(render_scene->m_point_light_list.m_lights.size());
 
-        // set ubo data
-        m_particle_collision_perframe_storage_buffer_object.view_matrix      = view_matrix;
-        m_particle_collision_perframe_storage_buffer_object.proj_view_matrix = proj_view_matrix;
-        m_particle_collision_perframe_storage_buffer_object.proj_inv_matrix  = proj_matrix.inverse();
-
         m_mesh_perframe_storage_buffer_object.proj_view_matrix = proj_view_matrix;
         m_mesh_perframe_storage_buffer_object.camera_position = camera_position;
         m_mesh_perframe_storage_buffer_object.ambient_light = ambient_light;
@@ -157,11 +152,6 @@ namespace Piccolo
 
         // pick pass view projection matrix
         m_mesh_inefficient_pick_perframe_storage_buffer_object.proj_view_matrix = proj_view_matrix;
-
-        m_particlebillboard_perframe_storage_buffer_object.proj_view_matrix = proj_view_matrix;
-        m_particlebillboard_perframe_storage_buffer_object.right_direction  = camera->right();
-        m_particlebillboard_perframe_storage_buffer_object.foward_direction = camera->forward();
-        m_particlebillboard_perframe_storage_buffer_object.up_direction     = camera->up();
     }
 
     void RenderResource::createIBLSamplers(std::shared_ptr<RHI> rhi)
@@ -1168,13 +1158,6 @@ namespace Piccolo
                 (global_storage_buffer_size * i) / frames_in_flight;
         }
 
-        // axis
-        rhi->createBuffer(sizeof(AxisStorageBufferObject),
-                          RHI_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                          RHI_MEMORY_PROPERTY_HOST_VISIBLE_BIT | RHI_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                          _storage_buffer._axis_inefficient_storage_buffer,
-                          _storage_buffer._axis_inefficient_storage_buffer_memory);
-
         // null descriptor
         rhi->createBuffer(64,
                           RHI_BUFFER_USAGE_STORAGE_BUFFER_BIT,
@@ -1188,12 +1171,6 @@ namespace Piccolo
                        RHI_WHOLE_SIZE,
                        0,
                        &_storage_buffer._global_upload_ringbuffer_memory_pointer);
-
-        rhi->mapMemory(_storage_buffer._axis_inefficient_storage_buffer_memory,
-                       0,
-                       RHI_WHOLE_SIZE,
-                       0,
-                       &_storage_buffer._axis_inefficient_storage_buffer_memory_pointer);
 
         static_assert(64 >= sizeof(MeshVertex::VulkanMeshVertexJointBinding), "");
     }

@@ -27,14 +27,10 @@ namespace Piccolo
         // render entities
         std::vector<RenderEntity> m_render_entities;
 
-        // axis, for editor
-        std::optional<RenderEntity> m_render_axis;
-
         // visible objects (updated per frame)
         std::vector<RenderMeshNode> m_directional_light_visible_mesh_nodes;
         std::vector<RenderMeshNode> m_point_lights_visible_mesh_nodes;
         std::vector<RenderMeshNode> m_main_camera_visible_mesh_nodes;
-        RenderAxisNode              m_axis_node;
 
         // clear
         void clear();
@@ -69,7 +65,5 @@ namespace Piccolo
         void updateVisibleObjectsPointLight(std::shared_ptr<RenderResource> render_resource);
         void updateVisibleObjectsMainCamera(std::shared_ptr<RenderResource> render_resource,
                                             std::shared_ptr<RenderCamera>   camera);
-        void updateVisibleObjectsAxis(std::shared_ptr<RenderResource> render_resource);
-        void updateVisibleObjectsParticle(std::shared_ptr<RenderResource> render_resource);
     };
 } // namespace Piccolo

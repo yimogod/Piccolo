@@ -51,7 +51,6 @@ namespace Piccolo
         std::vector<RenderMeshNode>* p_directional_light_visible_mesh_nodes {nullptr};
         std::vector<RenderMeshNode>* p_point_lights_visible_mesh_nodes {nullptr};
         std::vector<RenderMeshNode>* p_main_camera_visible_mesh_nodes {nullptr};
-        RenderAxisNode*              p_axis_node {nullptr};
     };
 
     //逻辑层面的渲染pass, 多个逻辑Pass构成逻辑层面的Pipeline.

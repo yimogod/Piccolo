@@ -120,56 +120,11 @@ namespace Piccolo
         Matrix4x4 joint_matrices[s_mesh_vertex_blending_max_joint_count * s_mesh_per_drawcall_max_instance_count];
     };
 
-    struct AxisStorageBufferObject
-    {
-        Matrix4x4 model_matrix  = Matrix4x4::IDENTITY;
-        uint32_t  selected_axis = 3;
-    };
-
-    struct ParticleBillboardPerframeStorageBufferObject
-    {
-        Matrix4x4 proj_view_matrix;
-        Vector3   right_direction;
-        float     _padding_right_position;
-        Vector3   up_direction;
-        float     _padding_up_direction;
-        Vector3   foward_direction;
-        float     _padding_forward_position;
-    };
-
-    struct ParticleCollisionPerframeStorageBufferObject
-    {
-        Matrix4x4 view_matrix;
-        Matrix4x4 proj_view_matrix;
-        Matrix4x4 proj_inv_matrix;
-    };
-
-    // TODO: 4096 may not be the best
-    static constexpr int s_particle_billboard_buffer_size = 4096;
-    struct ParticleBillboardPerdrawcallStorageBufferObject
-    {
-        Vector4 positions[s_particle_billboard_buffer_size];
-        Vector4 sizes[s_particle_billboard_buffer_size];
-        Vector4 colors[s_particle_billboard_buffer_size];
-    };
-
     struct MeshInefficientPickPerframeStorageBufferObject
     {
         Matrix4x4 proj_view_matrix;
         uint32_t  rt_width;
         uint32_t  rt_height;
-    };
-
-    struct MeshInefficientPickPerdrawcallStorageBufferObject
-    {
-        Matrix4x4 model_matrices[s_mesh_per_drawcall_max_instance_count];
-        uint32_t  node_ids[s_mesh_per_drawcall_max_instance_count];
-        float     enable_vertex_blendings[s_mesh_per_drawcall_max_instance_count];
-    };
-
-    struct MeshInefficientPickPerdrawcallVertexBlendingStorageBufferObject
-    {
-        Matrix4x4 joint_matrices[s_mesh_vertex_blending_max_joint_count * s_mesh_per_drawcall_max_instance_count];
     };
 
     // mesh
@@ -238,14 +193,6 @@ namespace Piccolo
         VulkanPBRMaterial* ref_material {nullptr};
         uint32_t           node_id;
         bool               enable_vertex_blending {false};
-    };
-
-    struct RenderAxisNode
-    {
-        Matrix4x4   model_matrix {Matrix4x4::IDENTITY};
-        VulkanMesh* ref_mesh {nullptr};
-        uint32_t    node_id;
-        bool        enable_vertex_blending {false};
     };
 
     struct TextureDataToUpdate

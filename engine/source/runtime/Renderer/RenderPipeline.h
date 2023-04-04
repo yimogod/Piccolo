@@ -14,9 +14,5 @@ namespace Piccolo
                                     std::shared_ptr<RenderResourceBase> render_resource) override final;
 
         void passUpdateAfterRecreateSwapchain();
-
-        void setAxisVisibleState(bool state);
-
-        void setSelectedAxis(size_t selected_axis);
     };
 } // namespace Piccolo
