@@ -18,7 +18,7 @@ class FVulkanDescriptorSet;
 
 //纹理   \
 //采样器   \
-//纹理       描述集布局1
+//纹理      描述集布局1
 //缓冲区   /           \
 //缓冲区  /             \
 //                       管线布局
@@ -125,7 +125,7 @@ public:
     //设置第 WriteIndex 个槽点对应的buffer
     void SetWriteImage(uint32_t WriteIndex, VkDescriptorImageInfo* Buffer);
 
-    //创建布局
+    //创建布局, 先有了布局, 才能创建描述集
     void CreateDescriptorLayout(VkDevice& Device);
 
     //调用api创建描述符集

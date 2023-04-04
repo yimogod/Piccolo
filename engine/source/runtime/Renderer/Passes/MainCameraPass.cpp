@@ -259,6 +259,7 @@ namespace Piccolo
         backup_odd_color_attachment_description.initialLayout  = RHI_IMAGE_LAYOUT_UNDEFINED;
         backup_odd_color_attachment_description.finalLayout    = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
+        // even偶数 layout是ShaderReadOnly
         RHIAttachmentDescription& backup_even_color_attachment_description =
             attachments[_main_camera_pass_backup_buffer_even];
         backup_even_color_attachment_description.format =
@@ -271,6 +272,7 @@ namespace Piccolo
         backup_even_color_attachment_description.initialLayout  = RHI_IMAGE_LAYOUT_UNDEFINED;
         backup_even_color_attachment_description.finalLayout    = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
+        //后处理奇数, layout是ShaderReadOnly
         RHIAttachmentDescription& post_process_odd_color_attachment_description =
             attachments[_main_camera_pass_post_process_buffer_odd];
         post_process_odd_color_attachment_description.format =
@@ -283,6 +285,7 @@ namespace Piccolo
         post_process_odd_color_attachment_description.initialLayout  = RHI_IMAGE_LAYOUT_UNDEFINED;
         post_process_odd_color_attachment_description.finalLayout    = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
+        //后处理偶数, layout是ShaderReadOnly
         RHIAttachmentDescription& post_process_even_color_attachment_description =
             attachments[_main_camera_pass_post_process_buffer_even];
         post_process_even_color_attachment_description.format =
@@ -295,6 +298,7 @@ namespace Piccolo
         post_process_even_color_attachment_description.initialLayout  = RHI_IMAGE_LAYOUT_UNDEFINED;
         post_process_even_color_attachment_description.finalLayout    = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
+        //深度附件
         RHIAttachmentDescription& depth_attachment_description = attachments[_main_camera_pass_depth];
         depth_attachment_description.format                    = m_rhi->getDepthImageInfo().depth_image_format;
         depth_attachment_description.samples                   = RHI_SAMPLE_COUNT_1_BIT;
@@ -316,21 +320,40 @@ namespace Piccolo
         swapchain_image_attachment_description.initialLayout  = RHI_IMAGE_LAYOUT_UNDEFINED;
         swapchain_image_attachment_description.finalLayout    = RHI_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
+
+        //render pass的7个subpass对应的描述
+        //  ----------------------------------- 创建共7个subpass -------------------------------
+        // subpass desc需要4类的attachment, 有input, color, depth, Preserve
+        // input是输入附件, 可以读取数据
+        // color是输出附件, 可以写入数据
+        // depth是深度附件, 用于深度和模板缓冲区
+        //多于一个subpass需要指定subpass间的依赖
         RHISubpassDescription subpasses[_main_camera_subpass_count] = {};
 
+
+        //------------------ 开始创建VkAttachmentReference, 根据作用pass不同,分了7组, 和subpass个数一模一样
+        // 所以AttachmentReference实际上是指定subpass用到的附件. 然后又这些Ref构成了SubPass描述
+        // subpass描述是创建renderpass的重要参数
+        // base pass color
         RHIAttachmentReference base_pass_color_attachments_reference[3] = {};
+        //对应的VkAttachmentDescription数组的索引. 地址减法. 无语了
         base_pass_color_attachments_reference[0].attachment = &gbuffer_normal_attachment_description - attachments;
+        //使用attach时, 指定attach的布局方式. COLOR_ATTACHMENT_OPTIMAL一般情况, 性能表现最佳
         base_pass_color_attachments_reference[0].layout     = RHI_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         base_pass_color_attachments_reference[1].attachment =
             &gbuffer_metallic_roughness_shadingmodeid_attachment_description - attachments;
+
         base_pass_color_attachments_reference[1].layout     = RHI_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         base_pass_color_attachments_reference[2].attachment = &gbuffer_albedo_attachment_description - attachments;
+        
         base_pass_color_attachments_reference[2].layout     = RHI_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+        //base pass 深度
         RHIAttachmentReference base_pass_depth_attachment_reference {};
         base_pass_depth_attachment_reference.attachment = &depth_attachment_description - attachments;
         base_pass_depth_attachment_reference.layout     = RHI_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
+        // 1. base subpass 描述符
         RHISubpassDescription& base_pass = subpasses[_main_camera_subpass_basepass];
         base_pass.pipelineBindPoint      = RHI_PIPELINE_BIND_POINT_GRAPHICS;
         base_pass.colorAttachmentCount =
@@ -338,8 +361,9 @@ namespace Piccolo
         base_pass.pColorAttachments       = &base_pass_color_attachments_reference[0];
         base_pass.pDepthStencilAttachment = &base_pass_depth_attachment_reference;
         base_pass.preserveAttachmentCount = 0;
-        base_pass.pPreserveAttachments    = NULL;
+        base_pass.pPreserveAttachments    = nullptr;
 
+        // lighting pass input
         RHIAttachmentReference deferred_lighting_pass_input_attachments_reference[4] = {};
         deferred_lighting_pass_input_attachments_reference[0].attachment =
             &gbuffer_normal_attachment_description - attachments;
@@ -352,12 +376,14 @@ namespace Piccolo
         deferred_lighting_pass_input_attachments_reference[2].layout     = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         deferred_lighting_pass_input_attachments_reference[3].attachment = &depth_attachment_description - attachments;
         deferred_lighting_pass_input_attachments_reference[3].layout     = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
+        
+        // lighting pass color
         RHIAttachmentReference deferred_lighting_pass_color_attachment_reference[1] = {};
         deferred_lighting_pass_color_attachment_reference[0].attachment =
             &backup_odd_color_attachment_description - attachments;
         deferred_lighting_pass_color_attachment_reference[0].layout = RHI_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+        // 2. lighting subpass 描述符
         RHISubpassDescription& deferred_lighting_pass = subpasses[_main_camera_subpass_deferred_lighting];
         deferred_lighting_pass.pipelineBindPoint      = RHI_PIPELINE_BIND_POINT_GRAPHICS;
         deferred_lighting_pass.inputAttachmentCount   = sizeof(deferred_lighting_pass_input_attachments_reference) /
@@ -370,15 +396,18 @@ namespace Piccolo
         deferred_lighting_pass.preserveAttachmentCount = 0;
         deferred_lighting_pass.pPreserveAttachments    = NULL;
 
+        //前向 color 
         RHIAttachmentReference forward_lighting_pass_color_attachments_reference[1] = {};
         forward_lighting_pass_color_attachments_reference[0].attachment =
             &backup_odd_color_attachment_description - attachments;
         forward_lighting_pass_color_attachments_reference[0].layout = RHI_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+        //前向depth
         RHIAttachmentReference forward_lighting_pass_depth_attachment_reference {};
         forward_lighting_pass_depth_attachment_reference.attachment = &depth_attachment_description - attachments;
         forward_lighting_pass_depth_attachment_reference.layout     = RHI_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
+        // 3. lighting subpass 描述符 SubPass
         RHISubpassDescription& forward_lighting_pass = subpasses[_main_camera_subpass_forward_lighting];
         forward_lighting_pass.pipelineBindPoint      = RHI_PIPELINE_BIND_POINT_GRAPHICS;
         forward_lighting_pass.inputAttachmentCount   = 0U;
@@ -390,6 +419,7 @@ namespace Piccolo
         forward_lighting_pass.preserveAttachmentCount = 0;
         forward_lighting_pass.pPreserveAttachments    = NULL;
 
+        // back up odd 色调映射颜色输入附件和输出附件
         RHIAttachmentReference tone_mapping_pass_input_attachment_reference {};
         tone_mapping_pass_input_attachment_reference.attachment =
             &backup_odd_color_attachment_description - attachments;
@@ -400,6 +430,7 @@ namespace Piccolo
             &backup_even_color_attachment_description - attachments;
         tone_mapping_pass_color_attachment_reference.layout = RHI_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+        // 4. 色调映射 SubPass
         RHISubpassDescription& tone_mapping_pass  = subpasses[_main_camera_subpass_tone_mapping];
         tone_mapping_pass.pipelineBindPoint       = RHI_PIPELINE_BIND_POINT_GRAPHICS;
         tone_mapping_pass.inputAttachmentCount    = 1;
@@ -410,6 +441,7 @@ namespace Piccolo
         tone_mapping_pass.preserveAttachmentCount = 0;
         tone_mapping_pass.pPreserveAttachments    = NULL;
 
+        //颜色矫正输入和输出附件
         RHIAttachmentReference color_grading_pass_input_attachment_reference {};
         color_grading_pass_input_attachment_reference.attachment =
             &backup_even_color_attachment_description - attachments;
@@ -420,6 +452,8 @@ namespace Piccolo
                 &backup_odd_color_attachment_description - attachments;
         color_grading_pass_color_attachment_reference.layout = RHI_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+
+        // 5. 颜色调整 SubPass
         RHISubpassDescription& color_grading_pass  = subpasses[_main_camera_subpass_color_grading];
         color_grading_pass.pipelineBindPoint       = RHI_PIPELINE_BIND_POINT_GRAPHICS;
         color_grading_pass.inputAttachmentCount    = 1;
@@ -438,6 +472,7 @@ namespace Piccolo
         fxaa_pass_color_attachment_reference.attachment = &backup_odd_color_attachment_description - attachments;
         fxaa_pass_color_attachment_reference.layout     = RHI_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+        // 6. 创建fxaa pass
         RHISubpassDescription& fxaa_pass  = subpasses[_main_camera_subpass_fxaa];
         fxaa_pass.pipelineBindPoint       = RHI_PIPELINE_BIND_POINT_GRAPHICS;
         fxaa_pass.inputAttachmentCount    = 1;
@@ -454,6 +489,7 @@ namespace Piccolo
 
         uint32_t ui_pass_preserve_attachment = &backup_odd_color_attachment_description - attachments;
 
+        //7. 创建 ui pass
         RHISubpassDescription& ui_pass  = subpasses[_main_camera_subpass_ui];
         ui_pass.pipelineBindPoint       = RHI_PIPELINE_BIND_POINT_GRAPHICS;
         ui_pass.inputAttachmentCount    = 0;
@@ -476,6 +512,7 @@ namespace Piccolo
         combine_ui_pass_color_attachment_reference.attachment = &swapchain_image_attachment_description - attachments;
         combine_ui_pass_color_attachment_reference.layout     = RHI_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+        // 创建最终的合并ui
         RHISubpassDescription& combine_ui_pass = subpasses[_main_camera_subpass_combine_ui];
         combine_ui_pass.pipelineBindPoint      = RHI_PIPELINE_BIND_POINT_GRAPHICS;
         combine_ui_pass.inputAttachmentCount   = sizeof(combine_ui_pass_input_attachments_reference) /
@@ -487,8 +524,17 @@ namespace Piccolo
         combine_ui_pass.preserveAttachmentCount = 0;
         combine_ui_pass.pPreserveAttachments    = NULL;
 
+
+        //创建7个依赖
+        // srcStageMask: 源subpass的那个管线阶段产生数据
+        // dstStageMask: 目subpass的那个管线阶段使用数据
+        // srcAccessMask: 源subpass如何访问数据
+        // dstAccessMask: 目subpass如何访问数据
         RHISubpassDependency dependencies[8] = {};
 
+        //灯光pass依赖shadow pass
+        //源subpass在ColorAttachment阶段产生数据, Color 写数据操作
+        //目subpass在FragmetnShader 阶段产生数据, Shader读数据操作
         RHISubpassDependency& deferred_lighting_pass_depend_on_shadow_map_pass = dependencies[0];
         deferred_lighting_pass_depend_on_shadow_map_pass.srcSubpass            = RHI_SUBPASS_EXTERNAL;
         deferred_lighting_pass_depend_on_shadow_map_pass.dstSubpass            = _main_camera_subpass_deferred_lighting;
@@ -498,6 +544,9 @@ namespace Piccolo
         deferred_lighting_pass_depend_on_shadow_map_pass.dstAccessMask = RHI_ACCESS_SHADER_READ_BIT;
         deferred_lighting_pass_depend_on_shadow_map_pass.dependencyFlags = 0; // NOT BY REGION
 
+        //灯光pass依赖base pass
+        //源subpass在ColorAttachment或者FragmentShader阶段产生数据, Color/Shader 写数据操作
+        //目subpass在ColorAttachment或者FragmentShader阶段产生数据, Color/Shader 读数据操作
         RHISubpassDependency& deferred_lighting_pass_depend_on_base_pass = dependencies[1];
         deferred_lighting_pass_depend_on_base_pass.srcSubpass            = _main_camera_subpass_basepass;
         deferred_lighting_pass_depend_on_base_pass.dstSubpass            = _main_camera_subpass_deferred_lighting;
@@ -511,6 +560,9 @@ namespace Piccolo
             RHI_ACCESS_SHADER_READ_BIT | RHI_ACCESS_COLOR_ATTACHMENT_READ_BIT;
         deferred_lighting_pass_depend_on_base_pass.dependencyFlags = RHI_DEPENDENCY_BY_REGION_BIT;
 
+        //前向灯光依赖后向灯光
+        //源subpass在ColorAttachment或者FragmentShader阶段产生数据, Color/Shader 写数据操作
+        //目subpass在ColorAttachment或者FragmentShader阶段产生数据, Color/Shader 读数据操作
         RHISubpassDependency& forward_lighting_pass_depend_on_deferred_lighting_pass = dependencies[2];
         forward_lighting_pass_depend_on_deferred_lighting_pass.srcSubpass = _main_camera_subpass_deferred_lighting;
         forward_lighting_pass_depend_on_deferred_lighting_pass.dstSubpass = _main_camera_subpass_forward_lighting;
@@ -524,6 +576,9 @@ namespace Piccolo
             RHI_ACCESS_SHADER_READ_BIT | RHI_ACCESS_COLOR_ATTACHMENT_READ_BIT;
         forward_lighting_pass_depend_on_deferred_lighting_pass.dependencyFlags = RHI_DEPENDENCY_BY_REGION_BIT;
 
+        //色调映射依赖前向灯光
+        //源subpass在ColorAttachment或者FragmentShader阶段产生数据, Color/Shader 写数据操作
+        //目subpass在ColorAttachment或者FragmentShader阶段产生数据, Color/Shader 读数据操作
         RHISubpassDependency& tone_mapping_pass_depend_on_lighting_pass = dependencies[3];
         tone_mapping_pass_depend_on_lighting_pass.srcSubpass            = _main_camera_subpass_forward_lighting;
         tone_mapping_pass_depend_on_lighting_pass.dstSubpass            = _main_camera_subpass_tone_mapping;
@@ -537,6 +592,9 @@ namespace Piccolo
             RHI_ACCESS_SHADER_READ_BIT | RHI_ACCESS_COLOR_ATTACHMENT_READ_BIT;
         tone_mapping_pass_depend_on_lighting_pass.dependencyFlags = RHI_DEPENDENCY_BY_REGION_BIT;
 
+        //颜色矫正依赖色调映射
+        //源subpass在ColorAttachment或者FragmentShader阶段产生数据, Color/Shader 写数据操作
+        //目subpass在ColorAttachment或者FragmentShader阶段产生数据, Color/Shader 读数据操作
         RHISubpassDependency& color_grading_pass_depend_on_tone_mapping_pass = dependencies[4];
         color_grading_pass_depend_on_tone_mapping_pass.srcSubpass            = _main_camera_subpass_tone_mapping;
         color_grading_pass_depend_on_tone_mapping_pass.dstSubpass            = _main_camera_subpass_color_grading;
@@ -550,6 +608,7 @@ namespace Piccolo
             RHI_ACCESS_SHADER_READ_BIT | RHI_ACCESS_COLOR_ATTACHMENT_READ_BIT;
         color_grading_pass_depend_on_tone_mapping_pass.dependencyFlags = RHI_DEPENDENCY_BY_REGION_BIT;
 
+        //FXAA依赖颜色矫正
         RHISubpassDependency& fxaa_pass_depend_on_color_grading_pass = dependencies[5];
         fxaa_pass_depend_on_color_grading_pass.srcSubpass            = _main_camera_subpass_color_grading;
         fxaa_pass_depend_on_color_grading_pass.dstSubpass            = _main_camera_subpass_fxaa;
@@ -562,6 +621,7 @@ namespace Piccolo
         fxaa_pass_depend_on_color_grading_pass.dstAccessMask =
             RHI_ACCESS_SHADER_READ_BIT | RHI_ACCESS_COLOR_ATTACHMENT_READ_BIT;
 
+        // UI依赖FXAA
         RHISubpassDependency& ui_pass_depend_on_fxaa_pass = dependencies[6];
         ui_pass_depend_on_fxaa_pass.srcSubpass            = _main_camera_subpass_fxaa;
         ui_pass_depend_on_fxaa_pass.dstSubpass            = _main_camera_subpass_ui;
@@ -573,6 +633,7 @@ namespace Piccolo
         ui_pass_depend_on_fxaa_pass.dstAccessMask = RHI_ACCESS_SHADER_READ_BIT | RHI_ACCESS_COLOR_ATTACHMENT_READ_BIT;
         ui_pass_depend_on_fxaa_pass.dependencyFlags = RHI_DEPENDENCY_BY_REGION_BIT;
 
+        // 合并UI依赖UI
         RHISubpassDependency& combine_ui_pass_depend_on_ui_pass = dependencies[7];
         combine_ui_pass_depend_on_ui_pass.srcSubpass            = _main_camera_subpass_ui;
         combine_ui_pass_depend_on_ui_pass.dstSubpass            = _main_camera_subpass_combine_ui;
@@ -586,6 +647,7 @@ namespace Piccolo
             RHI_ACCESS_SHADER_READ_BIT | RHI_ACCESS_COLOR_ATTACHMENT_READ_BIT;
         combine_ui_pass_depend_on_ui_pass.dependencyFlags = RHI_DEPENDENCY_BY_REGION_BIT;
 
+        // vulkan创建render pass
         RHIRenderPassCreateInfo renderpass_create_info {};
         renderpass_create_info.sType           = RHI_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
         renderpass_create_info.attachmentCount = (sizeof(attachments) / sizeof(attachments[0]));
@@ -603,12 +665,33 @@ namespace Piccolo
 
     void UMainCameraPass::setupDescriptorSetLayout()
     {
-        m_descriptor_infos.resize(_layout_type_count);
+        //每个子通道都可能写入一个或多个输出附件。这些附件要么是颜色附件，要么是深度-模板附件(两者之一)
+        // 通过检查子通道（它读取哪些输入附件，写入哪些输出附件），Vulkan可以构建渲染通道中的数据流向图
 
+        //用到的shader的uniform的槽位信息, 8种布局
+        m_descriptor_infos.resize(_layout_type_count);
+        // descriptorType
+        // Sampler 采样器, 对Buffer读入数据时进行采样, 坐标转换等操作, 不可写入
+        // SampledImage,和Sampler一样, 只是源是Image
+        // CombinedImageSampler, 采样器和Image的一个配对. 总是使用同一个采样器对这个图像采样
+        // StorageImage, Image可以被写入
+        // UniformTexelBuffer 缓冲区填充的内容(同构格式化数据)是不变的, 不可被着色器写入.
+        // StorageTexelBuffer 同样包含同构格式化数据, 但可被shader 写入
+        // InputAttachment, 输入附件是特殊类型的Image, 由图形管线同一Image的早期操作生成, 和ImageBuffer的区别是.
+        // 输入附件就是在PS中使用的
+
+        // UniformBuffer 标准uniform, 定义了一个结构体, 不可写
+        // StorageBuffer, 通UniformBuffer, 但可被shader 写入
+        // UniformBufferDynamic, 和UniformBuffer一样, 只是包含了起始偏移量和大小. 允许单个set中的单个缓冲区高频更新
+        // StorageBufferDynamic一样
+
+        // mesh_mesh shader, 只用到了一个layout, 顶点uniform
+        //
         {
             RHIDescriptorSetLayoutBinding mesh_mesh_layout_bindings[1];
 
             RHIDescriptorSetLayoutBinding& mesh_mesh_layout_uniform_buffer_binding = mesh_mesh_layout_bindings[0];
+            // shader中的插槽位置
             mesh_mesh_layout_uniform_buffer_binding.binding                        = 0;
             mesh_mesh_layout_uniform_buffer_binding.descriptorType                 = RHI_DESCRIPTOR_TYPE_STORAGE_BUFFER;
             mesh_mesh_layout_uniform_buffer_binding.descriptorCount                = 1;
@@ -627,9 +710,11 @@ namespace Piccolo
             }
         }
 
+        // 8个绑定, mesh global, 和mesh.frag的set=0的8个绑定对应上了
         {
             RHIDescriptorSetLayoutBinding mesh_global_layout_bindings[8];
 
+            //mvp, camera position, ambient light, point light nu,, pointLight数组, 平行光以及平行光的mvp
             RHIDescriptorSetLayoutBinding& mesh_global_layout_perframe_storage_buffer_binding =
                 mesh_global_layout_bindings[0];
             mesh_global_layout_perframe_storage_buffer_binding.binding = 0;
@@ -640,6 +725,7 @@ namespace Piccolo
                 RHI_SHADER_STAGE_VERTEX_BIT | RHI_SHADER_STAGE_FRAGMENT_BIT;
             mesh_global_layout_perframe_storage_buffer_binding.pImmutableSamplers = NULL;
 
+            //vulkan instance
             RHIDescriptorSetLayoutBinding& mesh_global_layout_perdrawcall_storage_buffer_binding =
                 mesh_global_layout_bindings[1];
             mesh_global_layout_perdrawcall_storage_buffer_binding.binding = 1;
@@ -649,6 +735,7 @@ namespace Piccolo
             mesh_global_layout_perdrawcall_storage_buffer_binding.stageFlags         = RHI_SHADER_STAGE_VERTEX_BIT;
             mesh_global_layout_perdrawcall_storage_buffer_binding.pImmutableSamplers = NULL;
 
+            //joint matrix
             RHIDescriptorSetLayoutBinding& mesh_global_layout_per_drawcall_vertex_blending_storage_buffer_binding =
                 mesh_global_layout_bindings[2];
             mesh_global_layout_per_drawcall_vertex_blending_storage_buffer_binding.binding = 2;
@@ -659,6 +746,7 @@ namespace Piccolo
                 RHI_SHADER_STAGE_VERTEX_BIT;
             mesh_global_layout_per_drawcall_vertex_blending_storage_buffer_binding.pImmutableSamplers = NULL;
 
+            // brdf
             RHIDescriptorSetLayoutBinding& mesh_global_layout_brdfLUT_texture_binding = mesh_global_layout_bindings[3];
             mesh_global_layout_brdfLUT_texture_binding.binding                        = 3;
             mesh_global_layout_brdfLUT_texture_binding.descriptorType     = RHI_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -666,20 +754,24 @@ namespace Piccolo
             mesh_global_layout_brdfLUT_texture_binding.stageFlags         = RHI_SHADER_STAGE_FRAGMENT_BIT;
             mesh_global_layout_brdfLUT_texture_binding.pImmutableSamplers = NULL;
 
+            // Irradiance
             RHIDescriptorSetLayoutBinding& mesh_global_layout_irradiance_texture_binding =
                 mesh_global_layout_bindings[4];
             mesh_global_layout_irradiance_texture_binding         = mesh_global_layout_brdfLUT_texture_binding;
             mesh_global_layout_irradiance_texture_binding.binding = 4;
 
+            //高光
             RHIDescriptorSetLayoutBinding& mesh_global_layout_specular_texture_binding = mesh_global_layout_bindings[5];
             mesh_global_layout_specular_texture_binding         = mesh_global_layout_brdfLUT_texture_binding;
             mesh_global_layout_specular_texture_binding.binding = 5;
 
+            //点光源阴影
             RHIDescriptorSetLayoutBinding& mesh_global_layout_point_light_shadow_texture_binding =
                 mesh_global_layout_bindings[6];
             mesh_global_layout_point_light_shadow_texture_binding         = mesh_global_layout_brdfLUT_texture_binding;
             mesh_global_layout_point_light_shadow_texture_binding.binding = 6;
 
+            //方向光阴影
             RHIDescriptorSetLayoutBinding& mesh_global_layout_directional_light_shadow_texture_binding =
                 mesh_global_layout_bindings[7];
             mesh_global_layout_directional_light_shadow_texture_binding = mesh_global_layout_brdfLUT_texture_binding;
@@ -700,6 +792,7 @@ namespace Piccolo
             }
         }
 
+        // 6个layout, 标准的mesh PBR shader?和mesh_gbuffer.frag对应上了
         {
             RHIDescriptorSetLayoutBinding mesh_material_layout_bindings[6];
 
@@ -712,7 +805,7 @@ namespace Piccolo
             mesh_material_layout_uniform_buffer_binding.stageFlags         = RHI_SHADER_STAGE_FRAGMENT_BIT;
             mesh_material_layout_uniform_buffer_binding.pImmutableSamplers = nullptr;
 
-            // (set = 2, binding = 1 in fragment shader)
+            // (set = 2, binding = 1 in fragment shader) BaseColor sampler
             RHIDescriptorSetLayoutBinding& mesh_material_layout_base_color_texture_binding =
                 mesh_material_layout_bindings[1];
             mesh_material_layout_base_color_texture_binding.binding        = 1;
@@ -721,25 +814,25 @@ namespace Piccolo
             mesh_material_layout_base_color_texture_binding.stageFlags         = RHI_SHADER_STAGE_FRAGMENT_BIT;
             mesh_material_layout_base_color_texture_binding.pImmutableSamplers = nullptr;
 
-            // (set = 2, binding = 2 in fragment shader)
+            // (set = 2, binding = 2 in fragment shader) 金属和粗糙度
             RHIDescriptorSetLayoutBinding& mesh_material_layout_metallic_roughness_texture_binding =
                 mesh_material_layout_bindings[2];
             mesh_material_layout_metallic_roughness_texture_binding = mesh_material_layout_base_color_texture_binding;
             mesh_material_layout_metallic_roughness_texture_binding.binding = 2;
 
-            // (set = 2, binding = 3 in fragment shader)
+            // (set = 2, binding = 3 in fragment shader) 法线sampler
             RHIDescriptorSetLayoutBinding& mesh_material_layout_normal_roughness_texture_binding =
                 mesh_material_layout_bindings[3];
             mesh_material_layout_normal_roughness_texture_binding = mesh_material_layout_base_color_texture_binding;
             mesh_material_layout_normal_roughness_texture_binding.binding = 3;
 
-            // (set = 2, binding = 4 in fragment shader)
+            // (set = 2, binding = 4 in fragment shader) 遮蔽sampler
             RHIDescriptorSetLayoutBinding& mesh_material_layout_occlusion_texture_binding =
                 mesh_material_layout_bindings[4];
             mesh_material_layout_occlusion_texture_binding         = mesh_material_layout_base_color_texture_binding;
             mesh_material_layout_occlusion_texture_binding.binding = 4;
 
-            // (set = 2, binding = 5 in fragment shader)
+            // (set = 2, binding = 5 in fragment shader) 自发光sampler
             RHIDescriptorSetLayoutBinding& mesh_material_layout_emissive_texture_binding =
                 mesh_material_layout_bindings[5];
             mesh_material_layout_emissive_texture_binding         = mesh_material_layout_base_color_texture_binding;
@@ -759,6 +852,7 @@ namespace Piccolo
             }
         }
 
+        //天空盒layout
         {
             RHIDescriptorSetLayoutBinding skybox_layout_bindings[2];
 
@@ -788,6 +882,7 @@ namespace Piccolo
             }
         }
 
+        //坐标轴 layout
         {
             RHIDescriptorSetLayoutBinding axis_layout_bindings[2];
 
@@ -817,6 +912,7 @@ namespace Piccolo
             }
         }
 
+        // lighting的GBuffer的布局
         {
             RHIDescriptorSetLayoutBinding gbuffer_lighting_global_layout_bindings[4];
 
@@ -867,15 +963,18 @@ namespace Piccolo
         }
     }
 
+    //创建了4个管线. 对应MainCameraPass对应的主要subpass
     void UMainCameraPass::setupPipelines()
     {
         m_render_pipelines.resize(_render_pipeline_type_count);
 
-        // mesh gbuffer
+        // mesh gbuffer用到了3个layout, 
         {
             RHIDescriptorSetLayout*     descriptorset_layouts[3] = {m_descriptor_infos[_mesh_global].layout,
                                                                 m_descriptor_infos[_per_mesh].layout,
                                                                 m_descriptor_infos[_mesh_per_material].layout};
+
+            //填充管线布局用到的描述符布局
             RHIPipelineLayoutCreateInfo pipeline_layout_create_info {};
             pipeline_layout_create_info.sType          = RHI_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
             pipeline_layout_create_info.setLayoutCount = 3;
@@ -888,6 +987,7 @@ namespace Piccolo
                 throw std::runtime_error("create mesh gbuffer pipeline layout");
             }
 
+            //mesh, mesh_gbuffer
             RHIShader* vert_shader_module = m_rhi->createShaderModule(MESH_VERT);
             RHIShader* frag_shader_module = m_rhi->createShaderModule(MESH_GBUFFER_FRAG);
 
@@ -906,6 +1006,8 @@ namespace Piccolo
             RHIPipelineShaderStageCreateInfo shader_stages[] = {vert_pipeline_shader_stage_create_info,
                                                                 frag_pipeline_shader_stage_create_info};
 
+            //顶点绑定和属性描述
+            //顶点输入的绑定和属性. 在shader中用layout in(location = 0)表示
             auto vertex_binding_descriptions   = MeshVertex::getBindingDescriptions();
             auto vertex_attribute_descriptions = MeshVertex::getAttributeDescriptions();
             RHIPipelineVertexInputStateCreateInfo vertex_input_state_create_info {};
@@ -915,11 +1017,13 @@ namespace Piccolo
             vertex_input_state_create_info.vertexAttributeDescriptionCount = vertex_attribute_descriptions.size();
             vertex_input_state_create_info.pVertexAttributeDescriptions    = &vertex_attribute_descriptions[0];
 
+            //输入图元装配
             RHIPipelineInputAssemblyStateCreateInfo input_assembly_create_info {};
             input_assembly_create_info.sType    = RHI_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
             input_assembly_create_info.topology = RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
             input_assembly_create_info.primitiveRestartEnable = RHI_FALSE;
 
+            //视口相关设置
             RHIPipelineViewportStateCreateInfo viewport_state_create_info {};
             viewport_state_create_info.sType         = RHI_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
             viewport_state_create_info.viewportCount = 1;
@@ -927,6 +1031,7 @@ namespace Piccolo
             viewport_state_create_info.scissorCount  = 1;
             viewport_state_create_info.pScissors     = m_rhi->getSwapchainInfo().scissor;
 
+            //光栅化设置
             RHIPipelineRasterizationStateCreateInfo rasterization_state_create_info {};
             rasterization_state_create_info.sType = RHI_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
             rasterization_state_create_info.depthClampEnable        = RHI_FALSE;
@@ -940,11 +1045,13 @@ namespace Piccolo
             rasterization_state_create_info.depthBiasClamp          = 0.0f;
             rasterization_state_create_info.depthBiasSlopeFactor    = 0.0f;
 
+            //多重采用
             RHIPipelineMultisampleStateCreateInfo multisample_state_create_info {};
             multisample_state_create_info.sType = RHI_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
             multisample_state_create_info.sampleShadingEnable  = RHI_FALSE;
             multisample_state_create_info.rasterizationSamples = RHI_SAMPLE_COUNT_1_BIT;
 
+            //混合附件设置, 粗略看了下, 三个附件完全一致. 这我就不懂了
             RHIPipelineColorBlendAttachmentState color_blend_attachments[3] = {};
             color_blend_attachments[0].colorWriteMask = RHI_COLOR_COMPONENT_R_BIT | RHI_COLOR_COMPONENT_G_BIT |
                                                         RHI_COLOR_COMPONENT_B_BIT | RHI_COLOR_COMPONENT_A_BIT;
@@ -974,6 +1081,7 @@ namespace Piccolo
             color_blend_attachments[2].dstAlphaBlendFactor = RHI_BLEND_FACTOR_ZERO;
             color_blend_attachments[2].alphaBlendOp        = RHI_BLEND_OP_ADD;
 
+            //混合设置
             RHIPipelineColorBlendStateCreateInfo color_blend_state_create_info = {};
             color_blend_state_create_info.sType         = RHI_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
             color_blend_state_create_info.logicOpEnable = RHI_FALSE;
@@ -994,6 +1102,10 @@ namespace Piccolo
             depth_stencil_create_info.depthBoundsTestEnable = RHI_FALSE;
             depth_stencil_create_info.stencilTestEnable     = RHI_FALSE;
 
+            //动态状态, 视口和裁剪
+            //图形管线很大，很复杂，也包含很多状态。在很多图形应用程序中，我们期望能够高频率地改变一些状态
+            //将图形管线中的特定部分标记为动态的能力，这意味着它们可以直接使用命令缓冲区里的命令在运行时改变，而不是通过用不同的对象。
+            //因为这会减少Vulkan优化的机会，或者会减少一部分状态，所以有必要精确地指定你想要将什么状态变为动态的
             RHIDynamicState dynamic_states[] = {RHI_DYNAMIC_STATE_VIEWPORT, RHI_DYNAMIC_STATE_SCISSOR};
             RHIPipelineDynamicStateCreateInfo dynamic_state_create_info {};
             dynamic_state_create_info.sType             = RHI_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
@@ -1046,6 +1158,7 @@ namespace Piccolo
                 throw std::runtime_error("create deferred lighting pipeline layout");
             }
 
+            //deffered light
             RHIShader* vert_shader_module = m_rhi->createShaderModule(DEFERRED_LIGHTING_VERT);
             RHIShader* frag_shader_module = m_rhi->createShaderModule(DEFERRED_LIGHTING_FRAG);
 
@@ -1065,6 +1178,7 @@ namespace Piccolo
             RHIPipelineShaderStageCreateInfo shader_stages[] = {vert_pipeline_shader_stage_create_info,
                                                                 frag_pipeline_shader_stage_create_info};
 
+            // TODO shader在使用vertex input明明完全不一样, 为何用的顶点输入信息用的是一样的的
             auto vertex_binding_descriptions   = MeshVertex::getBindingDescriptions();
             auto vertex_attribute_descriptions = MeshVertex::getAttributeDescriptions();
             RHIPipelineVertexInputStateCreateInfo vertex_input_state_create_info {};
@@ -1104,6 +1218,7 @@ namespace Piccolo
             multisample_state_create_info.sampleShadingEnable  = RHI_FALSE;
             multisample_state_create_info.rasterizationSamples = RHI_SAMPLE_COUNT_1_BIT;
 
+            //这里只有一个color blend attachment
             RHIPipelineColorBlendAttachmentState color_blend_attachments[1] = {};
             color_blend_attachments[0].colorWriteMask = RHI_COLOR_COMPONENT_R_BIT | RHI_COLOR_COMPONENT_G_BIT |
                                                         RHI_COLOR_COMPONENT_B_BIT | RHI_COLOR_COMPONENT_A_BIT;
@@ -1588,6 +1703,7 @@ namespace Piccolo
 
     void UMainCameraPass::setupDescriptorSet()
     {
+        //设置这5个pass的描述符集, 设置的是 m_descriptor_infos 数组
         setupModelGlobalDescriptorSet();
         setupSkyboxDescriptorSet();
         setupAxisDescriptorSet();
@@ -1596,6 +1712,14 @@ namespace Piccolo
 
     void UMainCameraPass::setupModelGlobalDescriptorSet()
     {
+        // 1. 通过描述集布局创建描述符集
+        // 2. 创建描述符信息, 个数要和描述符布局一致, Info是没有插槽信息的. 插槽信息在writer里
+        // 3. 创建描述符写入器, 和描述符信息一一对应
+        // 4. vkUpdateDescriptorSets写入Write数据(dstBinding就是插槽信息)
+
+        // Write通过VkDescriptorBufferInfo(VkDescriptorImageInfo)
+
+
         // update common model's global descriptor set
         RHIDescriptorSetAllocateInfo mesh_global_descriptor_set_alloc_info;
         mesh_global_descriptor_set_alloc_info.sType              = RHI_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -1610,6 +1734,9 @@ namespace Piccolo
             throw std::runtime_error("allocate mesh global descriptor set");
         }
 
+        //------- 和Layout的Binding一样, 都有8个
+
+        //前三个buffer都是指向同一个upload ring buffer. 且offet都是0. 这是为何?
         RHIDescriptorBufferInfo mesh_perframe_storage_buffer_info = {};
         // this offset plus dynamic_offset should not be greater than the size of the buffer
         mesh_perframe_storage_buffer_info.offset = 0;
@@ -1636,11 +1763,14 @@ namespace Piccolo
         assert(mesh_per_drawcall_vertex_blending_storage_buffer_info.range <
                m_global_render_resource->_storage_buffer._max_storage_buffer_range);
 
+
+        // image brdf
         RHIDescriptorImageInfo brdf_texture_image_info = {};
         brdf_texture_image_info.sampler     = m_global_render_resource->_ibl_resource._brdfLUT_texture_sampler;
         brdf_texture_image_info.imageView   = m_global_render_resource->_ibl_resource._brdfLUT_texture_image_view;
         brdf_texture_image_info.imageLayout = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
+        // image irrdiance
         RHIDescriptorImageInfo irradiance_texture_image_info = {};
         irradiance_texture_image_info.sampler = m_global_render_resource->_ibl_resource._irradiance_texture_sampler;
         irradiance_texture_image_info.imageView =
@@ -1662,6 +1792,8 @@ namespace Piccolo
         directional_light_shadow_texture_image_info.imageView   = m_directional_light_shadow_color_image_view;
         directional_light_shadow_texture_image_info.imageLayout = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
+        //8个wirite. 对应了8个绑定. shader中的 layout(set = 0, binding = 7) 
+        //前三个是buffer, 后面5个是sampler
         RHIWriteDescriptorSet mesh_descriptor_writes_info[8];
 
         mesh_descriptor_writes_info[0].sType           = RHI_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -1840,10 +1972,16 @@ namespace Piccolo
         {
             throw std::runtime_error("allocate gbuffer light global descriptor set");
         }
+
+        // lighting GBuffer没有 对应的descriptor info, 不对. 是有的. 写在setupFramebufferDescriptorSet方法里了
+        //更新帧缓冲的描述符集, 描述符集重用了m_descriptor_infos[_deferred_lighting].descriptor_set
+        // 4个write都写的是上面同一个descriptor_set
     }
 
     void UMainCameraPass::setupFramebufferDescriptorSet()
     {
+        // 4个Image附件 = 3个GBuffer, 1个DepthView
+
         RHIDescriptorImageInfo gbuffer_normal_input_attachment_info = {};
         gbuffer_normal_input_attachment_info.sampler     = m_rhi->getOrCreateDefaultSampler(Default_Sampler_Nearest);
         gbuffer_normal_input_attachment_info.imageView   = m_framebuffer.attachments[_main_camera_pass_gbuffer_a].view;
@@ -1926,10 +2064,13 @@ namespace Piccolo
                                     NULL);
     }
 
+    
     void UMainCameraPass::setupSwapchainFramebuffers()
     {
         m_swapchain_framebuffers.resize(m_rhi->getSwapchainInfo().imageViews.size());
 
+        // 每个swapchainview都创建一套buffer view
+        // 奇怪啊. 这里又不会输出到屏幕. 为何要用到交换链的image view
         // create frame buffer for every imageview
         for (size_t i = 0; i < m_rhi->getSwapchainInfo().imageViews.size(); i++)
         {
@@ -1948,6 +2089,7 @@ namespace Piccolo
             framebuffer_create_info.sType      = RHI_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
             framebuffer_create_info.flags      = 0U;
             framebuffer_create_info.renderPass = m_framebuffer.render_pass;
+            //直接就是9不行?
             framebuffer_create_info.attachmentCount =
                 (sizeof(framebuffer_attachments_for_image_view) / sizeof(framebuffer_attachments_for_image_view[0]));
             framebuffer_create_info.pAttachments = framebuffer_attachments_for_image_view;
@@ -1955,6 +2097,7 @@ namespace Piccolo
             framebuffer_create_info.height       = m_rhi->getSwapchainInfo().extent.height;
             framebuffer_create_info.layers       = 1;
 
+             // vulkan 创建帧缓冲
             m_swapchain_framebuffers[i] = new VulkanFramebuffer();
             if (RHI_SUCCESS != m_rhi->createFramebuffer(&framebuffer_create_info, m_swapchain_framebuffers[i]))
             {
@@ -1994,6 +2137,7 @@ namespace Piccolo
                               ParticlePass&     particle_pass,
                               uint32_t          current_swapchain_image_index)
     {
+        //构建render pass对象, 并提交begin render pass指令
         {
             RHIRenderPassBeginInfo renderpass_begin_info {};
             renderpass_begin_info.sType             = RHI_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -2030,6 +2174,7 @@ namespace Piccolo
 
         m_rhi->pushEvent(m_rhi->getCurrentCommandBuffer(), "Deferred Lighting", color);
 
+        // DeffereLighting SubPass
         drawDeferredLighting();
 
         m_rhi->popEvent(m_rhi->getCurrentCommandBuffer());
@@ -2038,22 +2183,26 @@ namespace Piccolo
 
         m_rhi->pushEvent(m_rhi->getCurrentCommandBuffer(), "Forward Lighting", color);
 
+        // forward lighting subpass
         particle_pass.draw();
 
         m_rhi->popEvent(m_rhi->getCurrentCommandBuffer());
 
         m_rhi->cmdNextSubpassPFN(m_rhi->getCurrentCommandBuffer(), RHI_SUBPASS_CONTENTS_INLINE);
 
+        // tone mapping subpass
         tone_mapping_pass.draw();
 
         m_rhi->cmdNextSubpassPFN(m_rhi->getCurrentCommandBuffer(), RHI_SUBPASS_CONTENTS_INLINE);
 
+        // color grading subpass
         color_grading_pass.draw();
 
         m_rhi->cmdNextSubpassPFN(m_rhi->getCurrentCommandBuffer(), RHI_SUBPASS_CONTENTS_INLINE);
 
         m_rhi->cmdNextSubpassPFN(m_rhi->getCurrentCommandBuffer(), RHI_SUBPASS_CONTENTS_INLINE);
 
+        //绘制坐标轴之前, 需要清除位于当前渲染通道中索引为0的ColorAttachment附件.
         RHIClearAttachment clear_attachments[1];
         clear_attachments[0].aspectMask                  = RHI_IMAGE_ASPECT_COLOR_BIT;
         clear_attachments[0].colorAttachment             = 0;
@@ -2116,6 +2265,12 @@ namespace Piccolo
         float color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
         m_rhi->pushEvent(m_rhi->getCurrentCommandBuffer(), "Mesh GBuffer", color);
 
+        //绘制的n步走
+        // 1. 绑定pipeline, 因为吧viewport和scissor设置为动态状态了, 所以这里可以设置一下
+        // 2. 绑定piplinelinelayout和描述符集
+        // 3. 绑定顶点缓冲区和索引缓冲区
+
+        // gbuffer的pipeline
         m_rhi->cmdBindPipelinePFN(m_rhi->getCurrentCommandBuffer(),
                                   RHI_PIPELINE_BIND_POINT_GRAPHICS,
                                   m_render_pipelines[_render_pipeline_type_mesh_gbuffer].pipeline);
