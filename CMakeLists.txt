@@ -5,6 +5,9 @@ project(Piccolo VERSION 0.1.0)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(BUILD_SHARED_LIBS OFF)
+if(MSVC)
+  add_compile_options(/wd4819)
+endif()
 
 include(CMakeDependentOption)
 
@@ -19,6 +22,7 @@ endif()
 set(PICCOLO_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(CMAKE_INSTALL_PREFIX "${PICCOLO_ROOT_DIR}/bin")
 set(BINARY_ROOT_DIR "${CMAKE_INSTALL_PREFIX}/")
+
 
 
 add_subdirectory(engine)
