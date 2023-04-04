@@ -12,7 +12,6 @@
 #include "runtime/engine.h"
 #include "runtime/function/framework/world/world_manager.h"
 #include "runtime/function/input/input_system.h"
-#include "runtime/function/physics/physics_manager.h"
 #include "runtime/function/render/debugdraw/debug_draw_manager.h"
 #include "runtime/function/render/render_debug_config.h"
 #include "runtime/Renderer/RenderSystem.h"
@@ -34,9 +33,6 @@ namespace Piccolo
         m_logger_system = std::make_shared<LogSystem>();
 
         m_asset_manager = std::make_shared<AssetManager>();
-
-        m_physics_manager = std::make_shared<PhysicsManager>();
-        m_physics_manager->initialize();
 
         m_world_manager = std::make_shared<WorldManager>();
         m_world_manager->initialize();
@@ -73,9 +69,6 @@ namespace Piccolo
         m_world_manager->clear();
         m_world_manager.reset();
 
-        m_physics_manager->clear();
-        m_physics_manager.reset();
-
         m_input_system->clear();
         m_input_system.reset();
 
@@ -86,7 +79,5 @@ namespace Piccolo
         m_file_system.reset();
 
         m_config_manager.reset();
-
-        m_particle_manager.reset();
     }
 } // namespace Piccolo

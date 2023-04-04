@@ -50,11 +50,6 @@ target_link_libraries(${TARGET_NAME} PUBLIC lua_static sol2)
 target_link_libraries(${TARGET_NAME} PUBLIC ${vulkan_lib})
 target_link_libraries(${TARGET_NAME} PRIVATE $<BUILD_INTERFACE:json11>)
 
-if(ENABLE_PHYSICS_DEBUG_RENDERER)
-  add_compile_definitions(ENABLE_PHYSICS_DEBUG_RENDERER)
-  target_link_libraries(${TARGET_NAME} PUBLIC TestFramework d3d12.lib shcore.lib)
-endif()
-
 target_include_directories(
   ${TARGET_NAME}
   PUBLIC $<BUILD_INTERFACE:${vulkan_include}>)

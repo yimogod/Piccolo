@@ -6,7 +6,6 @@
 #include "runtime/function/framework/world/world_manager.h"
 #include "runtime/function/global/global_context.h"
 #include "runtime/function/input/input_system.h"
-#include "runtime/function/physics/physics_manager.h"
 #include "runtime/Renderer/RenderSystem.h"
 #include "runtime/function/render/window_system.h"
 #include "runtime/function/render/debugdraw/debug_draw_manager.h"
@@ -74,10 +73,6 @@ namespace Piccolo
         g_runtime_global_context.m_render_system->swapLogicRenderData();
 
         rendererTick(delta_time);
-
-#ifdef ENABLE_PHYSICS_DEBUG_RENDERER
-        g_runtime_global_context.m_physics_manager->renderPhysicsWorld(delta_time);
-#endif
 
         g_runtime_global_context.m_window_system->pollEvents();
 

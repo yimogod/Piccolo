@@ -12,7 +12,6 @@
 #include "runtime/function/framework/world/world_manager.h"
 #include "runtime/function/global/global_context.h"
 #include "runtime/function/input/input_system.h"
-#include "runtime/function/physics/physics_scene.h"
 
 namespace Piccolo
 {
@@ -118,14 +117,10 @@ namespace Piccolo
 
     void MotorComponent::calculatedDesiredVerticalMoveSpeed(unsigned int command, float delta_time)
     {
-        std::shared_ptr<PhysicsScene> physics_scene =
-            g_runtime_global_context.m_world_manager->getCurrentActivePhysicsScene().lock();
-        ASSERT(physics_scene);
-
         if (m_motor_res.m_jump_height == 0.f)
             return;
 
-        const float gravity = physics_scene->getGravity().length();
+        const float gravity = 9.8f;
 
         if (m_jump_state == JumpState::idle)
         {

@@ -34,9 +34,6 @@ namespace Piccolo
         Matrix4x4 getMatrix() const { return m_transform_buffer[m_current_index].getMatrix(); }
 
         void tick(float delta_time) override;
-
-        void tryUpdateRigidBodyComponent();
-
     protected:
         META(Enable)
         Transform m_transform;

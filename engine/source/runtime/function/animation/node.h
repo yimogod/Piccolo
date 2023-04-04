@@ -105,8 +105,6 @@ namespace Piccolo
 
     protected:
         std::shared_ptr<RawBone> m_definition {};
-        // physics simulation and actor status
-
     public:
         Bone();
         void initialize(std::shared_ptr<RawBone> definition, Bone* parent_bone);

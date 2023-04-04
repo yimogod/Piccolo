@@ -5,7 +5,6 @@
 #include "runtime/function/framework/component/motor/motor_component.h"
 #include "runtime/function/framework/world/world_manager.h"
 #include "runtime/function/global/global_context.h"
-#include "runtime/function/physics/physics_scene.h"
 
 namespace Piccolo
 {
@@ -26,18 +25,9 @@ namespace Piccolo
 
     Vector3 CharacterController::move(const Vector3& current_position, const Vector3& displacement)
     {
-        std::shared_ptr<PhysicsScene> physics_scene =
-            g_runtime_global_context.m_world_manager->getCurrentActivePhysicsScene().lock();
-        ASSERT(physics_scene);
-
         Vector3 final_position = current_position + displacement;
 
         Transform final_transform = Transform(final_position, Quaternion::IDENTITY, Vector3::UNIT_SCALE);
-
-        if (physics_scene->isOverlap(m_rigidbody_shape, final_transform.getMatrix()))
-        {
-            final_position = current_position;
-        }
 
         return final_position;
     }

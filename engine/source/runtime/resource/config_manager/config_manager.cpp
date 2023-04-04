@@ -56,12 +56,6 @@ namespace Piccolo
                 {
                     m_global_particle_res_url = value;
                 }
-#ifdef ENABLE_PHYSICS_DEBUG_RENDERER
-                else if (name == "JoltAssetFolder")
-                {
-                    m_jolt_physics_asset_folder = m_root_folder / value;
-                }
-#endif
             }
         }
     }
@@ -83,9 +77,4 @@ namespace Piccolo
     const std::string& ConfigManager::getGlobalRenderingResUrl() const { return m_global_rendering_res_url; }
 
     const std::string& ConfigManager::getGlobalParticleResUrl() const { return m_global_particle_res_url; }
-
-#ifdef ENABLE_PHYSICS_DEBUG_RENDERER
-    const std::filesystem::path& ConfigManager::getJoltPhysicsAssetFolder() const { return m_jolt_physics_asset_folder; }
-#endif
-
 } // namespace Piccolo
