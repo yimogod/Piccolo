@@ -35,22 +35,6 @@ if(NOT TARGET tinyobjloader)
     set_target_properties(uninstall PROPERTIES FOLDER ${third_party_folder}/tinyobjloader)
 endif()
 
-if(NOT TARGET Jolt)
-    option(TARGET_HELLO_WORLD "" OFF)
-    option(TARGET_PERFORMANCE_TEST "" OFF)
-    option(TARGET_SAMPLES "" OFF)
-    option(TARGET_UNIT_TESTS "" OFF)
-    option(TARGET_VIEWER "" OFF)
-    option(TARGET_TEST_FRAMEWORK "" OFF)
-
-    add_subdirectory(JoltPhysics/Build)
-    set_target_properties(Jolt
-        PROPERTIES 
-        FOLDER ${third_party_folder}/JoltPhysics
-        MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
-
-endif()
-
 if(NOT TARGET sol2)
     add_subdirectory(sol2-3.3.0)
 endif()
