@@ -15,7 +15,6 @@ namespace Piccolo
 
     struct FRenderPipelineInitInfo
     {
-        bool                                enable_fxaa {false};
         std::shared_ptr<RenderResourceBase> render_resource;
     };
 

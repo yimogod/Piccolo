@@ -426,9 +426,9 @@ namespace Piccolo
         tone_mapping_pass.pInputAttachments       = &tone_mapping_pass_input_attachment_reference;
         tone_mapping_pass.colorAttachmentCount    = 1;
         tone_mapping_pass.pColorAttachments       = &tone_mapping_pass_color_attachment_reference;
-        tone_mapping_pass.pDepthStencilAttachment = NULL;
+        tone_mapping_pass.pDepthStencilAttachment = nullptr;
         tone_mapping_pass.preserveAttachmentCount = 0;
-        tone_mapping_pass.pPreserveAttachments    = NULL;
+        tone_mapping_pass.pPreserveAttachments    = nullptr;
 
         // 颜色矫正输入和输出附件
         RHIAttachmentReference color_grading_pass_input_attachment_reference {};
@@ -651,7 +651,7 @@ namespace Piccolo
             mesh_mesh_layout_uniform_buffer_binding.descriptorType     = RHI_DESCRIPTOR_TYPE_STORAGE_BUFFER;
             mesh_mesh_layout_uniform_buffer_binding.descriptorCount    = 1;
             mesh_mesh_layout_uniform_buffer_binding.stageFlags         = RHI_SHADER_STAGE_VERTEX_BIT;
-            mesh_mesh_layout_uniform_buffer_binding.pImmutableSamplers = NULL;
+            mesh_mesh_layout_uniform_buffer_binding.pImmutableSamplers = nullptr;
 
             RHIDescriptorSetLayoutCreateInfo mesh_mesh_layout_create_info {};
             mesh_mesh_layout_create_info.sType        = RHI_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
