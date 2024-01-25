@@ -83,6 +83,7 @@ void URenderSystem::initialize(FRenderSystemInitInfo init_info)
 
     // initialize render pipeline
     FRenderPipelineInitInfo pipeline_init_info;
+    pipeline_init_info.enable_fxaa     = global_rendering_res.m_enable_fxaa;
     pipeline_init_info.render_resource = m_render_resource;
 
     m_render_pipeline        = std::make_shared<URenderPipeline>();
@@ -184,6 +185,33 @@ FEngineContentViewport URenderSystem::getEngineContentViewport() const
 GObjectID URenderSystem::getGObjectIDByMeshID(uint32_t mesh_id) const
 {
     return m_render_scene->getGObjectIDByMeshID(mesh_id);
+}
+
+void URenderSystem::createAxis(std::array<RenderEntity, 3> axis_entities, std::array<RenderMeshData, 3> mesh_datas)
+{
+    for (int i = 0; i < axis_entities.size(); i++)
+    {
+        m_render_resource->uploadGameObjectRenderResource(m_rhi, axis_entities[i], mesh_datas[i]);
+    }
+}
+
+void URenderSystem::setVisibleAxis(std::optional<RenderEntity> axis)
+{
+    m_render_scene->m_render_axis = axis;
+
+    if (axis.has_value())
+    {
+        std::static_pointer_cast<URenderPipeline>(m_render_pipeline)->setAxisVisibleState(true);
+    }
+    else
+    {
+        std::static_pointer_cast<URenderPipeline>(m_render_pipeline)->setAxisVisibleState(false);
+    }
+}
+
+void URenderSystem::setSelectedAxis(size_t selected_axis)
+{
+    std::static_pointer_cast<URenderPipeline>(m_render_pipeline)->setSelectedAxis(selected_axis);
 }
 
 GuidAllocator<GameObjectPartId>& URenderSystem::getGOInstanceIdAllocator()

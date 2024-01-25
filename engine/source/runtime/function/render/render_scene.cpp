@@ -17,6 +17,8 @@ namespace Piccolo
         updateVisibleObjectsDirectionalLight(render_resource, camera);
         updateVisibleObjectsPointLight(render_resource);
         updateVisibleObjectsMainCamera(render_resource, camera);
+        updateVisibleObjectsAxis(render_resource);
+        updateVisibleObjectsParticle(render_resource);
     }
 
     void RenderScene::setVisibleNodesReference()
@@ -24,6 +26,7 @@ namespace Piccolo
         URenderPass::m_visiable_nodes.p_directional_light_visible_mesh_nodes = &m_directional_light_visible_mesh_nodes;
         URenderPass::m_visiable_nodes.p_point_lights_visible_mesh_nodes      = &m_point_lights_visible_mesh_nodes;
         URenderPass::m_visiable_nodes.p_main_camera_visible_mesh_nodes       = &m_main_camera_visible_mesh_nodes;
+        URenderPass::m_visiable_nodes.p_axis_node                            = &m_axis_node;
     }
 
     GuidAllocator<GameObjectPartId>& RenderScene::getInstanceIdAllocator() { return m_instance_id_allocator; }
@@ -220,5 +223,25 @@ namespace Piccolo
                 temp_node.ref_material            = &material_asset;
             }
         }
+    }
+
+    void RenderScene::updateVisibleObjectsAxis(std::shared_ptr<RenderResource> render_resource)
+    {
+        if (m_render_axis.has_value())
+        {
+            RenderEntity& axis = *m_render_axis;
+
+            m_axis_node.model_matrix = axis.m_model_matrix;
+            m_axis_node.node_id      = axis.m_instance_id;
+
+            VulkanMesh& mesh_asset             = render_resource->getEntityMesh(axis);
+            m_axis_node.ref_mesh               = &mesh_asset;
+            m_axis_node.enable_vertex_blending = axis.m_enable_vertex_blending;
+        }
+    }
+
+    void RenderScene::updateVisibleObjectsParticle(std::shared_ptr<RenderResource> render_resource)
+    {
+        // TODO
     }
 } // namespace Piccolo

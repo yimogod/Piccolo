@@ -87,6 +87,11 @@ namespace Piccolo
 
         RHIBuffer* _global_null_descriptor_storage_buffer;
         RHIDeviceMemory* _global_null_descriptor_storage_buffer_memory;
+
+        // axis
+        RHIBuffer* _axis_inefficient_storage_buffer;
+        RHIDeviceMemory* _axis_inefficient_storage_buffer_memory;
+        void* _axis_inefficient_storage_buffer_memory_pointer;
     };
 
     struct GlobalRenderResource
@@ -134,7 +139,10 @@ namespace Piccolo
         MeshPointLightShadowPerframeStorageBufferObject m_mesh_point_light_shadow_perframe_storage_buffer_object;
         MeshDirectionalLightShadowPerframeStorageBufferObject
                                                        m_mesh_directional_light_shadow_perframe_storage_buffer_object;
+        AxisStorageBufferObject                        m_axis_storage_buffer_object;
         MeshInefficientPickPerframeStorageBufferObject m_mesh_inefficient_pick_perframe_storage_buffer_object;
+        ParticleBillboardPerframeStorageBufferObject   m_particlebillboard_perframe_storage_buffer_object;
+        ParticleCollisionPerframeStorageBufferObject   m_particle_collision_perframe_storage_buffer_object;
 
         // cached mesh and material
         std::map<size_t, VulkanMesh>        m_vulkan_meshes;

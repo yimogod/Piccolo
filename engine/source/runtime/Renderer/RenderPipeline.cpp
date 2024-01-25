@@ -140,4 +140,16 @@ namespace Piccolo
             main_camera_pass.getFramebufferImageViews()[E_main_camera_pass_backup_buffer_even]);
         g_runtime_global_context.m_debugdraw_manager->updateAfterRecreateSwapchain();
     }
+
+    void URenderPipeline::setAxisVisibleState(bool state)
+    {
+        UMainCameraPass& main_camera_pass = *(static_cast<UMainCameraPass*>(m_main_camera_pass.get()));
+        main_camera_pass.m_is_show_axis  = state;
+    }
+
+    void URenderPipeline::setSelectedAxis(size_t selected_axis)
+    {
+        UMainCameraPass& main_camera_pass = *(static_cast<UMainCameraPass*>(m_main_camera_pass.get()));
+        main_camera_pass.m_selected_axis = selected_axis;
+    }
 } // namespace Piccolo

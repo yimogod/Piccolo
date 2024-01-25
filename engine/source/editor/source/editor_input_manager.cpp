@@ -41,6 +41,15 @@ namespace Piccolo
                                                                              std::placeholders::_4));
     }
 
+    void EditorInputManager::updateCursorOnAxis(Vector2 cursor_uv)
+    {
+        if (g_editor_global_context.m_scene_manager->getEditorCamera())
+        {
+            Vector2 window_size(m_engine_window_size.x, m_engine_window_size.y);
+            m_cursor_on_axis = g_editor_global_context.m_scene_manager->updateCursorOnAxis(cursor_uv, window_size);
+        }
+    }
+
     void EditorInputManager::processEditorCommand()
     {
         float           camera_speed  = m_camera_speed;
@@ -194,6 +203,15 @@ namespace Piccolo
             }
             else if (g_editor_global_context.m_window_system->isMouseButtonDown(GLFW_MOUSE_BUTTON_LEFT))
             {
+                g_editor_global_context.m_scene_manager->moveEntity(
+                    xpos,
+                    ypos,
+                    m_mouse_x,
+                    m_mouse_y,
+                    m_engine_window_pos,
+                    m_engine_window_size,
+                    m_cursor_on_axis,
+                    g_editor_global_context.m_scene_manager->getSelectedObjectMatrix());
                 glfwSetInputMode(g_editor_global_context.m_window_system->getWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
             }
             else
@@ -204,8 +222,7 @@ namespace Piccolo
                 {
                     Vector2 cursor_uv = Vector2((m_mouse_x - m_engine_window_pos.x) / m_engine_window_size.x,
                                                 (m_mouse_y - m_engine_window_pos.y) / m_engine_window_size.y);
-                    
-
+                    updateCursorOnAxis(cursor_uv);
                 }
             }
         }
@@ -252,6 +269,8 @@ namespace Piccolo
     void EditorInputManager::onMouseButtonClicked(int key, int action)
     {
         if (!g_is_editor_mode)
+            return;
+        if (m_cursor_on_axis != 3)
             return;
 
         std::shared_ptr<Level> current_active_level = g_runtime_global_context.m_world_manager->getCurrentActiveLevel().lock();

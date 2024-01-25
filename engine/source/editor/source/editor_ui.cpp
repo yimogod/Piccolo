@@ -115,6 +115,8 @@ namespace Piccolo
                                               Math::sin(Math::degreesToRadians(degrees_val.y / 2)) *
                                               Math::cos(Math::degreesToRadians(degrees_val.z / 2));
                 trans_ptr->m_rotation.normalise();
+
+                g_editor_global_context.m_scene_manager->drawSelectedEntityAxis();
             }
         };
         m_editor_ui_creator["bool"] = [this](const std::string& name, void* value_ptr)  -> void {
@@ -632,6 +634,83 @@ namespace Piccolo
         static bool rotate_button_ckecked = false;
         static bool scale_button_ckecked  = false;
 
+        switch (g_editor_global_context.m_scene_manager->getEditorAxisMode())
+        {
+            case EditorAxisMode::TranslateMode:
+                trans_button_ckecked  = true;
+                rotate_button_ckecked = false;
+                scale_button_ckecked  = false;
+                break;
+            case EditorAxisMode::RotateMode:
+                trans_button_ckecked  = false;
+                rotate_button_ckecked = true;
+                scale_button_ckecked  = false;
+                break;
+            case EditorAxisMode::ScaleMode:
+                trans_button_ckecked  = false;
+                rotate_button_ckecked = false;
+                scale_button_ckecked  = true;
+                break;
+            default:
+                break;
+        }
+
+        if (ImGui::BeginMenuBar())
+        {
+            ImGui::Indent(10.f);
+            drawAxisToggleButton("Trans", trans_button_ckecked, (int)EditorAxisMode::TranslateMode);
+            ImGui::Unindent();
+
+            ImGui::SameLine();
+
+            drawAxisToggleButton("Rotate", rotate_button_ckecked, (int)EditorAxisMode::RotateMode);
+
+            ImGui::SameLine();
+
+            drawAxisToggleButton("Scale", scale_button_ckecked, (int)EditorAxisMode::ScaleMode);
+
+            ImGui::SameLine();
+
+            float indent_val = 0.0f;
+
+#if defined(__GNUC__) && defined(__MACH__)
+            float indent_scale = 1.0f;
+#else // Not tested on Linux
+            float x_scale, y_scale;
+            glfwGetWindowContentScale(g_editor_global_context.m_window_system->getWindow(), &x_scale, &y_scale);
+            float indent_scale = fmaxf(1.0f, fmaxf(x_scale, y_scale));
+#endif
+            indent_val = g_editor_global_context.m_input_manager->getEngineWindowSize().x - 100.0f * indent_scale;
+
+            ImGui::Indent(indent_val);
+            if (g_is_editor_mode)
+            {
+                ImGui::PushID("Editor Mode");
+                if (ImGui::Button("Editor Mode"))
+                {
+                    g_is_editor_mode = false;
+                    g_editor_global_context.m_scene_manager->drawSelectedEntityAxis();
+                    g_editor_global_context.m_input_manager->resetEditorCommand();
+                    g_editor_global_context.m_window_system->setFocusMode(true);
+                }
+                ImGui::PopID();
+            }
+            else
+            {
+                if (ImGui::Button("Game Mode"))
+                {
+                    g_is_editor_mode = true;
+                    g_editor_global_context.m_scene_manager->drawSelectedEntityAxis();
+                    g_runtime_global_context.m_input_system->resetGameCommand();
+                    g_editor_global_context.m_render_system->getRenderCamera()->setMainViewMatrix(
+                        g_editor_global_context.m_scene_manager->getEditorCamera()->getViewMatrix());
+                }
+            }
+
+            ImGui::Unindent();
+            ImGui::EndMenuBar();
+        }
+
         if (!g_is_editor_mode)
         {
             ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Press Left Alt key to display the mouse cursor!");
@@ -706,6 +785,8 @@ namespace Piccolo
             if (ImGui::Button(string_id))
             {
                 check_state = true;
+                g_editor_global_context.m_scene_manager->setEditorAxisMode((EditorAxisMode)axis_mode);
+                g_editor_global_context.m_scene_manager->drawSelectedEntityAxis();
             }
         }
     }

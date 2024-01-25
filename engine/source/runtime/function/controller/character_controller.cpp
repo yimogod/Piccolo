@@ -10,8 +10,17 @@ namespace Piccolo
 {
     CharacterController::CharacterController(const Capsule& capsule) : m_capsule(capsule)
     {
+        m_rigidbody_shape                                    = RigidBodyShape();
+        m_rigidbody_shape.m_geometry                         = PICCOLO_REFLECTION_NEW(Capsule);
+        *static_cast<Capsule*>(m_rigidbody_shape.m_geometry) = m_capsule;
+
+        m_rigidbody_shape.m_type = RigidBodyShapeType::capsule;
+
         Quaternion orientation;
         orientation.fromAngleAxis(Radian(Degree(90.f)), Vector3::UNIT_X);
+
+        m_rigidbody_shape.m_local_transform =
+            Transform(Vector3(0, 0, capsule.m_half_height + capsule.m_radius), orientation, Vector3::UNIT_SCALE);
     }
 
     Vector3 CharacterController::move(const Vector3& current_position, const Vector3& displacement)
