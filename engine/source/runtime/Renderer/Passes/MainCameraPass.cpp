@@ -80,7 +80,8 @@ namespace Piccolo
                                         m_rhi->m_swapchain_extent.height,
                                         (VkFormat)m_framebuffer.attachments[i].format,
                                         VK_IMAGE_TILING_OPTIMAL,
-                                        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
+                                        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                                            VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
                                             VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
                                         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                                         Image,
@@ -97,7 +98,8 @@ namespace Piccolo
                                         m_rhi->m_swapchain_extent.height,
                                         (VkFormat)m_framebuffer.attachments[i].format,
                                         VK_IMAGE_TILING_OPTIMAL,
-                                        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
+                                        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                                            VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
                                             VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT,
                                         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                                         Image,
@@ -190,10 +192,10 @@ namespace Piccolo
 
         //步骤
         // 1. 创建 VkAttachmentDescription, 即attachments数组.
-        // 重要!!!这些Attachment关联的imageview是pixelshader进行输出的.
+        // 重要!!!这些Attachment关联的imageview是pixel shader进行输出的.
         //       也就是说FrameBuffer里面包含的image都是ps的输出
-        //       也因此clearvalue对应的就是这些ps要输出的imageview. clear了才好重新写入.
-        //       但这些被写入的iamgeview, 可以作为其他pass的uniform使用
+        //       也因此clear value对应的就是这些ps要输出的imageview. clear了才好重新写入.
+        //       但这些被写入的imageview, 可以作为其他pass的uniform使用
         // 2. 根据不同的 VkAttachmentDescription 创建 VkAttachmentReference 数组
         // 3. 根据VkAttachmentReference 创建 Subpass
         // 4. 设置SubPass依赖关系

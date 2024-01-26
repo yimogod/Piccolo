@@ -398,8 +398,7 @@ namespace Piccolo
 
                         // 绑定mesh的顶点和索引缓冲区
                         VkBuffer VertBuff = ((VulkanBuffer*)mesh->mesh_vertex_position_buffer)->getResource();
-                        VkBuffer IndexBuff = ((VulkanBuffer*)mesh->mesh_vertex_position_buffer)->getResource();
-                        //VkBuffer IndexBuff = ((VulkanBuffer*)mesh->mesh_vertex_position_buffer)->getResource();
+                        VkBuffer IndexBuff = ((VulkanBuffer*)mesh->mesh_index_buffer)->getResource();
 
                         CB.BindVertexBuffer(VertBuff);
                         CB.BindIndexBuffer(IndexBuff);
