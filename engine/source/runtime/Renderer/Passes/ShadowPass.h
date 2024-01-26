@@ -6,7 +6,7 @@ namespace Piccolo
 {
     class RenderResourceBase;
 
-    class UDirectionalLightShadowPass : public URenderPass
+    class UShadowPass : public URenderPass
     {
     public:
         void initialize(const FRenderPassInitInfo* init_info) override final;

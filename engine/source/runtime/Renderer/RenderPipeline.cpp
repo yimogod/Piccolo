@@ -1,7 +1,7 @@
 #include "RenderPipeline.h"
 
-#include "Passes/DirectionalLightPass.h"
 #include "Passes/MainCameraPass.h"
+#include "Passes/ShadowPass.h"
 #include "runtime/function/render/interface/vulkan/vulkan_rhi.h"
 
 #include "runtime/function/render/passes/color_grading_pass.h"
@@ -19,7 +19,7 @@ namespace Piccolo
     void URenderPipeline::initialize(FRenderPipelineInitInfo init_info)
     {
         m_point_light_shadow_pass = std::make_shared<PointLightShadowPass>();
-        m_directional_light_pass  = std::make_shared<UDirectionalLightShadowPass>();
+        m_shadow_pass             = std::make_shared<UShadowPass>();
         m_main_camera_pass        = std::make_shared<UMainCameraPass>();
         m_tone_mapping_pass       = std::make_shared<ToneMappingPass>();
         m_color_grading_pass      = std::make_shared<ColorGradingPass>();
@@ -31,7 +31,7 @@ namespace Piccolo
         pass_common_info.render_resource = init_info.render_resource;
 
         m_point_light_shadow_pass->setCommonInfo(pass_common_info);
-        m_directional_light_pass->setCommonInfo(pass_common_info);
+        m_shadow_pass->setCommonInfo(pass_common_info);
         m_main_camera_pass->setCommonInfo(pass_common_info);
         m_tone_mapping_pass->setCommonInfo(pass_common_info);
         m_color_grading_pass->setCommonInfo(pass_common_info);
@@ -39,7 +39,7 @@ namespace Piccolo
         m_combine_ui_pass->setCommonInfo(pass_common_info);
 
         m_point_light_shadow_pass->initialize(nullptr);
-        m_directional_light_pass->initialize(nullptr);
+        m_shadow_pass->initialize(nullptr);
 
         std::shared_ptr<UMainCameraPass> main_camera_pass = std::static_pointer_cast<UMainCameraPass>(m_main_camera_pass);
         std::shared_ptr<URenderPass>     _main_camera_pass = std::static_pointer_cast<URenderPass>(m_main_camera_pass);
@@ -47,18 +47,18 @@ namespace Piccolo
         main_camera_pass->m_point_light_shadow_color_image_view =
             std::static_pointer_cast<URenderPass>(m_point_light_shadow_pass)->getFramebufferImageViews()[0];
         main_camera_pass->m_directional_light_shadow_color_image_view =
-            std::static_pointer_cast<URenderPass>(m_directional_light_pass)->m_framebuffer.attachments[0].view;
+            std::static_pointer_cast<URenderPass>(m_shadow_pass)->m_framebuffer.attachments[0].view;
 
         m_main_camera_pass->initialize(nullptr);
 
         std::vector<RHIDescriptorSetLayout*> descriptor_layouts = _main_camera_pass->getDescriptorSetLayouts();
         std::static_pointer_cast<PointLightShadowPass>(m_point_light_shadow_pass)
             ->setPerMeshLayout(descriptor_layouts[UMainCameraPass::LayoutType::_per_mesh]);
-        std::static_pointer_cast<UDirectionalLightShadowPass>(m_directional_light_pass)
+        std::static_pointer_cast<UShadowPass>(m_shadow_pass)
             ->setPerMeshLayout(descriptor_layouts[UMainCameraPass::LayoutType::_per_mesh]);
 
         m_point_light_shadow_pass->postInitialize();
-        m_directional_light_pass->postInitialize();
+        m_shadow_pass->postInitialize();
 
         ToneMappingPassInitInfo tone_mapping_init_info;
         tone_mapping_init_info.render_pass = _main_camera_pass->getRenderPass();
@@ -87,6 +87,8 @@ namespace Piccolo
 
     void URenderPipeline::deferredRender(std::shared_ptr<RHI> rhi, std::shared_ptr<RenderResourceBase> render_resource)
     {
+        //每帧进行调用
+
         VulkanRHI*      vulkan_rhi      = static_cast<VulkanRHI*>(rhi.get());
         RenderResource* vulkan_resource = static_cast<RenderResource*>(render_resource.get());
 
@@ -102,7 +104,7 @@ namespace Piccolo
         if (recreate_swapchain)return;
 
         //平行光阴影pass
-        static_cast<UDirectionalLightShadowPass*>(m_directional_light_pass.get())->draw();
+        static_cast<UShadowPass*>(m_shadow_pass.get())->draw();
         //点光阴影pass
         static_cast<PointLightShadowPass*>(m_point_light_shadow_pass.get())->draw();
 

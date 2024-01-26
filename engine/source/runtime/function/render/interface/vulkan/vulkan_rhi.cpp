@@ -174,7 +174,7 @@ namespace Piccolo
             _vkWaitForFences(m_device, 1, &m_is_frame_in_flight_fences[m_current_frame_index], VK_TRUE, UINT64_MAX);
         if (VK_SUCCESS != res_wait_for_fences)
         {
-            LOG_ERROR("failed to synchronize!");
+            LOG_ERROR("failed to synchronize by fence(between cpu and gpu)!");
         }
     }
 
@@ -423,6 +423,36 @@ namespace Piccolo
             }
         }
 
+
+//        VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT};
+//        VkSubmitInfo         submit_info   = {};
+//        submit_info.sType                  = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+//        submit_info.waitSemaphoreCount     = 1;
+//        submit_info.pWaitSemaphores        = &m_image_available_for_render_semaphores[m_current_frame_index];
+//        submit_info.pWaitDstStageMask      = wait_stages;
+//        submit_info.commandBufferCount     = 0;
+//        submit_info.pCommandBuffers        = nullptr;
+//        submit_info.signalSemaphoreCount   = 0;
+//        submit_info.pSignalSemaphores      = nullptr;
+//
+//        //重置fence, 在下面的VkQueueSubmit中使用到了本fence
+//        VkResult res_reset_fences = _vkResetFences(m_device, 1, &m_is_frame_in_flight_fences[m_current_frame_index]);
+//        if (VK_SUCCESS != res_reset_fences)
+//        {
+//            LOG_ERROR("_vkResetFences failed!");
+//            return false;
+//        }
+//
+//        VkResult res_queue_submit =
+//            vkQueueSubmit(((VulkanQueue*)m_graphics_queue)->getResource(), 1, &submit_info, m_is_frame_in_flight_fences[m_current_frame_index]);
+//        if (VK_SUCCESS != res_queue_submit)
+//        {
+//            LOG_ERROR("vkQueueSubmit failed!");
+//            return false;
+//        }
+//        m_current_frame_index = (m_current_frame_index + 1) % k_max_frames_in_flight;
+
+
         // begin command buffer
         VkCommandBufferBeginInfo command_buffer_begin_info {};
         command_buffer_begin_info.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -442,6 +472,8 @@ namespace Piccolo
 
     void VulkanRHI::submitRendering(std::function<void()> passUpdateAfterRecreateSwapchain)
     {
+        //提交渲染队列
+
         // end command buffer
         VkResult res_end_command_buffer = _vkEndCommandBuffer(m_vk_command_buffers[m_current_frame_index]);
         if (VK_SUCCESS != res_end_command_buffer)
@@ -481,7 +513,7 @@ namespace Piccolo
             return;
         }
 
-        // present swapchain
+        // 展示图像
         VkPresentInfoKHR present_info   = {};
         present_info.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         present_info.waitSemaphoreCount = 1;

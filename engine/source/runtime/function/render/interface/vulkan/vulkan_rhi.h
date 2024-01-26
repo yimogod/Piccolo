@@ -237,8 +237,12 @@ namespace Piccolo
         uint8_t              m_current_frame_index {0};
         VkCommandPool        m_command_pools[k_max_frames_in_flight];
         VkCommandBuffer      m_vk_command_buffers[k_max_frames_in_flight];
+
+        //接受vkAcquireNextImageKHR通知可以渲染的信号量
         VkSemaphore          m_image_available_for_render_semaphores[k_max_frames_in_flight];
+        //发送完成渲染的信号量
         VkSemaphore          m_image_finished_for_presentation_semaphores[k_max_frames_in_flight];
+        //发送完成贴图拷贝的信号量
         RHISemaphore*        m_image_available_for_texturescopy_semaphores[k_max_frames_in_flight];
         VkFence              m_is_frame_in_flight_fences[k_max_frames_in_flight];
 

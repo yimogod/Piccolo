@@ -33,6 +33,8 @@ namespace Piccolo
         virtual void initialize(FRenderPipelineInitInfo init_info) = 0;
 
         virtual void preparePassData(std::shared_ptr<RenderResourceBase> render_resource);
+
+        //延迟渲染
         virtual void deferredRender(std::shared_ptr<RHI> rhi, std::shared_ptr<RenderResourceBase> render_resource);
 
         void             initializeUIRenderBackend(WindowUI* window_ui);
@@ -41,7 +43,7 @@ namespace Piccolo
     public:
         
         //构成此渲染的各个pass
-        std::shared_ptr<URenderPassBase> m_directional_light_pass;
+        std::shared_ptr<URenderPassBase> m_shadow_pass;
         std::shared_ptr<URenderPassBase> m_point_light_shadow_pass;
         std::shared_ptr<URenderPassBase> m_main_camera_pass;
         std::shared_ptr<URenderPassBase> m_color_grading_pass;

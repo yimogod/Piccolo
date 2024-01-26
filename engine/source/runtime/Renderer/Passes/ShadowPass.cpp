@@ -1,4 +1,4 @@
-#include "DirectionalLightPass.h"
+#include "ShadowPass.h"
 
 #include "runtime/function/render/render_helper.h"
 #include "runtime/function/render/render_mesh.h"
@@ -12,7 +12,7 @@
 
 namespace Piccolo
 {
-    void UDirectionalLightShadowPass::initialize(const FRenderPassInitInfo* init_info)
+    void UShadowPass::initialize(const FRenderPassInitInfo* init_info)
     {
         URenderPass::initialize(nullptr);
 
@@ -27,12 +27,12 @@ namespace Piccolo
         //shader相关, 和后面的渲染管线有联系
         setupDescriptorSetLayout();
     }
-    void UDirectionalLightShadowPass::postInitialize()
+    void UShadowPass::postInitialize()
     {
         setupPipelines();
         setupDescriptorSet();
     }
-    void UDirectionalLightShadowPass::preparePassData(std::shared_ptr<RenderResourceBase> render_resource)
+    void UShadowPass::preparePassData(std::shared_ptr<RenderResourceBase> render_resource)
     {
         const RenderResource* vulkan_resource = static_cast<const RenderResource*>(render_resource.get());
         if (vulkan_resource)
@@ -41,11 +41,11 @@ namespace Piccolo
                 vulkan_resource->m_mesh_directional_light_shadow_perframe_storage_buffer_object;
         }
     }
-    void UDirectionalLightShadowPass::draw() { drawModel(); }
+    void UShadowPass::draw() { drawModel(); }
 
     //创建帧缓存需要的所有附件. 针对本Pass, 用到了2个附件.
     //一个是颜色, 一个是深度
-    void UDirectionalLightShadowPass::setupAttachments()
+    void UShadowPass::setupAttachments()
     {
         // 俩附件 颜色和深度
 
@@ -118,7 +118,7 @@ namespace Piccolo
         memory->setResource(Att2.Mem);
         m_framebuffer.attachments[1].mem = memory2;
     }
-    void UDirectionalLightShadowPass::setupRenderPass()
+    void UShadowPass::setupRenderPass()
     {
         //所有的renderpass用到了两个附件, 就是上面创建的一个深度, 一个color附件
         Proxy.RenderPass.SetAttachmentNum(2);
@@ -169,7 +169,7 @@ namespace Piccolo
         pRenderPass->setResource(Proxy.RenderPass.GetVKRenderPass());
         m_framebuffer.render_pass = pRenderPass;
     }
-    void UDirectionalLightShadowPass::setupFramebuffer()
+    void UShadowPass::setupFramebuffer()
     {
         //使用initialize方法中手动创建的两个image view. 即自己已存的两个view
         Proxy.FrameBuffer.CreateFrameBuffer(m_rhi->m_device, Proxy.RenderPass.GetVKRenderPass());
@@ -178,7 +178,7 @@ namespace Piccolo
     	m_framebuffer.framebuffer = new VulkanFramebuffer();
         ((VulkanFramebuffer*)m_framebuffer.framebuffer)->setResource(Proxy.FrameBuffer.GetFrameBuffer());
     }
-    void UDirectionalLightShadowPass::setupDescriptorSetLayout()
+    void UShadowPass::setupDescriptorSetLayout()
     {
         //设置描述符布局
         Proxy.DescriptorSets.resize(1);
@@ -201,7 +201,7 @@ namespace Piccolo
         m_descriptor_infos[0].layout = new VulkanDescriptorSetLayout();
         ((VulkanDescriptorSetLayout*)m_descriptor_infos[0].layout)->setResource(Proxy.DescriptorSets[0].GetLayout());
     }
-    void UDirectionalLightShadowPass::setupPipelines()
+    void UShadowPass::setupPipelines()
     {
         Proxy.Pipelines.resize(1);
         FVulkanPipeline& Pipeline = Proxy.Pipelines[0];
@@ -274,7 +274,7 @@ namespace Piccolo
         Shader.DestroyShader(m_rhi->m_device);
     }
     //创建描述符集, 并把write和描述符集绑定起来
-    void UDirectionalLightShadowPass::setupDescriptorSet()
+    void UShadowPass::setupDescriptorSet()
     {
         auto& Set = Proxy.DescriptorSets[0];
         VulkanDescriptorPool* Pool  = (VulkanDescriptorPool*)m_rhi->m_descriptor_pool;
@@ -312,7 +312,7 @@ namespace Piccolo
         ((VulkanDescriptorSet*)m_descriptor_infos[0].descriptor_set)
             ->setResource(Proxy.DescriptorSets[0].GetDescriptorSet());
     }
-    void UDirectionalLightShadowPass::drawModel()
+    void UShadowPass::drawModel()
     {
         struct MeshNode
         {
@@ -399,6 +399,7 @@ namespace Piccolo
                         // 绑定mesh的顶点和索引缓冲区
                         VkBuffer VertBuff = ((VulkanBuffer*)mesh->mesh_vertex_position_buffer)->getResource();
                         VkBuffer IndexBuff = ((VulkanBuffer*)mesh->mesh_vertex_position_buffer)->getResource();
+                        //VkBuffer IndexBuff = ((VulkanBuffer*)mesh->mesh_vertex_position_buffer)->getResource();
 
                         CB.BindVertexBuffer(VertBuff);
                         CB.BindIndexBuffer(IndexBuff);
