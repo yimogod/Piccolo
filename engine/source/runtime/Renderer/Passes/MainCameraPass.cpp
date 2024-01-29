@@ -55,6 +55,7 @@ namespace Piccolo
     void UMainCameraPass::setupAttachments()
     {
         //gbuffer用到的5个缓冲区 + 后处理用到的2个
+        //所以本pass总共用到了7个附件!!
         m_framebuffer.attachments.resize(E_main_camera_pass_custom_attachment_count +
                                          E_main_camera_pass_post_process_attachment_count);
 
@@ -65,8 +66,12 @@ namespace Piccolo
         m_framebuffer.attachments[E_main_camera_pass_backup_buffer_even].format = RHI_FORMAT_R16G16B16A16_SFLOAT;
 
         //对上面5个创建的frame buffer创建image资源
+        //基本上就是GBuffer相关
+
         //IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT表示图形数据的生存周期很短. 因此没必要写入设备内存
         //IMAGE_USAGE_TRANSFER_SRC_BIT表示缓冲可以被用作内存传输操作的数据来源
+
+        //0~4, 5个GBuffer
         for (int i = 0; i < E_main_camera_pass_custom_attachment_count; ++i)
         {
             VkImage Image;
@@ -133,24 +138,28 @@ namespace Piccolo
         }
 
 
-        //创建后处理Buffer, image usage flags和上面不一样
+        // 创建后处理Buffer,
+        // image usage flags和上面不一样
         m_framebuffer.attachments[E_main_camera_pass_post_process_buffer_odd].format  = RHI_FORMAT_R16G16B16A16_SFLOAT;
         m_framebuffer.attachments[E_main_camera_pass_post_process_buffer_even].format = RHI_FORMAT_R16G16B16A16_SFLOAT;
+
+        //5, 6 两个后处理
         for (int i = E_main_camera_pass_custom_attachment_count;
-             i <
-             E_main_camera_pass_custom_attachment_count + E_main_camera_pass_post_process_attachment_count;
+             i < E_main_camera_pass_custom_attachment_count + E_main_camera_pass_post_process_attachment_count;
              ++i)
         {
             VkImage        Image;
             VkDeviceMemory Mem;
 
+            //input, color, sampler
             VulkanUtil::createImage(m_rhi->m_physical_device,
                                     m_rhi->m_device,
                                     m_rhi->m_swapchain_extent.width,
                                     m_rhi->m_swapchain_extent.height,
                                     (VkFormat)m_framebuffer.attachments[i].format,
                                     VK_IMAGE_TILING_OPTIMAL,
-                                    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
+                                    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                                        VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
                                         VK_IMAGE_USAGE_SAMPLED_BIT,
                                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                                     Image,
@@ -202,10 +211,13 @@ namespace Piccolo
         // 5. 创建RenderPass
 
         // RenderPass用到了9个Attachment, 下面的代码就是依次创建了9个attachment描述符, 和真实的image资产关联了起来
+        // 7个上面创建的imageview. 以及1个depth和1个swap chain
+
 
         //VK_ATTACHMENT_STORE_OP_STORE表示写入的时候会保存到显存. 用于后面使用
         RHIAttachmentDescription attachments[E_main_camera_pass_attachment_count] = {};
 
+        // BufferA 存储法线
         RHIAttachmentDescription& gbuffer_normal_attachment_description = attachments[E_main_camera_pass_gbuffer_a];
         gbuffer_normal_attachment_description.format  = m_framebuffer.attachments[E_main_camera_pass_gbuffer_a].format;
         gbuffer_normal_attachment_description.samples = RHI_SAMPLE_COUNT_1_BIT;
@@ -334,26 +346,29 @@ namespace Piccolo
         //------------------ 开始创建VkAttachmentReference, 根据作用pass不同,分了7组, 和subpass个数一模一样
         // 所以AttachmentReference实际上是指定subpass用到的附件. 然后又这些Ref构成了SubPass描述
         // subpass描述是创建renderpass的重要参数
-        // base pass color
+        // 因为每个subpass用到的不是所有的附件, 所以通过reference的排列组合来指定subpass用到的实际的附件
+
+        // --------------------------- base pass ------------------------------
+        // base pass color, 没有input附件. 只用到了3个GBuffer作为输出附件
         RHIAttachmentReference base_pass_color_attachments_reference[3] = {};
         //对应的VkAttachmentDescription数组的索引. 地址减法. 无语了
         base_pass_color_attachments_reference[0].attachment = &gbuffer_normal_attachment_description - attachments;
         //使用attach时, 指定attach的布局方式. COLOR_ATTACHMENT_OPTIMAL一般情况, 性能表现最佳
         base_pass_color_attachments_reference[0].layout     = RHI_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
         base_pass_color_attachments_reference[1].attachment =
             &gbuffer_metallic_roughness_shadingmodeid_attachment_description - attachments;
-
         base_pass_color_attachments_reference[1].layout     = RHI_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
         base_pass_color_attachments_reference[2].attachment = &gbuffer_albedo_attachment_description - attachments;
-        
         base_pass_color_attachments_reference[2].layout     = RHI_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-        //base pass 深度
+        //base pass depth
         RHIAttachmentReference base_pass_depth_attachment_reference {};
         base_pass_depth_attachment_reference.attachment = &depth_attachment_description - attachments;
         base_pass_depth_attachment_reference.layout     = RHI_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-        // 1. base subpass 描述符
+        // base subpass 描述符  1
         RHISubpassDescription& base_pass = subpasses[E_main_camera_subpass_basepass];
         base_pass.pipelineBindPoint      = RHI_PIPELINE_BIND_POINT_GRAPHICS;
         base_pass.colorAttachmentCount =
@@ -363,27 +378,34 @@ namespace Piccolo
         base_pass.preserveAttachmentCount = 0;
         base_pass.pPreserveAttachments    = nullptr;
 
-        // lighting pass input
+
+
+        // ---------------------- lighting pass ---------------------------
+        // 和basepass有些不一样, input用到了用到了3个GBuffer和一个深度
+        // 输出到了backup_odd_color
         RHIAttachmentReference deferred_lighting_pass_input_attachments_reference[4] = {};
         deferred_lighting_pass_input_attachments_reference[0].attachment =
             &gbuffer_normal_attachment_description - attachments;
         deferred_lighting_pass_input_attachments_reference[0].layout = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
         deferred_lighting_pass_input_attachments_reference[1].attachment =
             &gbuffer_metallic_roughness_shadingmodeid_attachment_description - attachments;
         deferred_lighting_pass_input_attachments_reference[1].layout = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
         deferred_lighting_pass_input_attachments_reference[2].attachment =
             &gbuffer_albedo_attachment_description - attachments;
         deferred_lighting_pass_input_attachments_reference[2].layout     = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
         deferred_lighting_pass_input_attachments_reference[3].attachment = &depth_attachment_description - attachments;
         deferred_lighting_pass_input_attachments_reference[3].layout     = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         
-        // lighting pass color
+        // lighting pass 输出附件
         RHIAttachmentReference deferred_lighting_pass_color_attachment_reference[1] = {};
         deferred_lighting_pass_color_attachment_reference[0].attachment =
             &backup_odd_color_attachment_description - attachments;
         deferred_lighting_pass_color_attachment_reference[0].layout = RHI_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-        // 2. lighting subpass 描述符
+        // lighting subpass 描述符 2
         RHISubpassDescription& deferred_lighting_pass = subpasses[E_main_camera_subpass_deferred_lighting];
         deferred_lighting_pass.pipelineBindPoint      = RHI_PIPELINE_BIND_POINT_GRAPHICS;
         deferred_lighting_pass.inputAttachmentCount   = sizeof(deferred_lighting_pass_input_attachments_reference) /
@@ -392,11 +414,12 @@ namespace Piccolo
         deferred_lighting_pass.colorAttachmentCount = sizeof(deferred_lighting_pass_color_attachment_reference) /
                                                       sizeof(deferred_lighting_pass_color_attachment_reference[0]);
         deferred_lighting_pass.pColorAttachments       = &deferred_lighting_pass_color_attachment_reference[0];
-        deferred_lighting_pass.pDepthStencilAttachment = NULL;
+        deferred_lighting_pass.pDepthStencilAttachment = nullptr;
         deferred_lighting_pass.preserveAttachmentCount = 0;
-        deferred_lighting_pass.pPreserveAttachments    = NULL;
+        deferred_lighting_pass.pPreserveAttachments    = nullptr;
 
-        //前向 color 
+        //------------------------ 前向 color -----------------------
+        //和上面一样, 也是输出到了backup_odd_color
         RHIAttachmentReference forward_lighting_pass_color_attachments_reference[1] = {};
         forward_lighting_pass_color_attachments_reference[0].attachment =
             &backup_odd_color_attachment_description - attachments;
@@ -407,41 +430,47 @@ namespace Piccolo
         forward_lighting_pass_depth_attachment_reference.attachment = &depth_attachment_description - attachments;
         forward_lighting_pass_depth_attachment_reference.layout     = RHI_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-        // 3. lighting subpass 描述符 SubPass
+        // lighting subpass 描述符  3
         RHISubpassDescription& forward_lighting_pass = subpasses[E_main_camera_subpass_forward_lighting];
         forward_lighting_pass.pipelineBindPoint      = RHI_PIPELINE_BIND_POINT_GRAPHICS;
         forward_lighting_pass.inputAttachmentCount   = 0U;
-        forward_lighting_pass.pInputAttachments      = NULL;
+        forward_lighting_pass.pInputAttachments      = nullptr;
         forward_lighting_pass.colorAttachmentCount   = sizeof(forward_lighting_pass_color_attachments_reference) /
                                                      sizeof(forward_lighting_pass_color_attachments_reference[0]);
         forward_lighting_pass.pColorAttachments       = &forward_lighting_pass_color_attachments_reference[0];
         forward_lighting_pass.pDepthStencilAttachment = &forward_lighting_pass_depth_attachment_reference;
         forward_lighting_pass.preserveAttachmentCount = 0;
-        forward_lighting_pass.pPreserveAttachments    = NULL;
+        forward_lighting_pass.pPreserveAttachments    = nullptr;
 
-        // back up odd 色调映射颜色输入附件和输出附件
+
+        // ---------------------- tone_mapping_pass ----------------------
+        // back up odd 作为 tone mapping 输入附件
+        // back up even 作为 tone mapping 色调映射输出附件
         RHIAttachmentReference tone_mapping_pass_input_attachment_reference {};
         tone_mapping_pass_input_attachment_reference.attachment =
             &backup_odd_color_attachment_description - attachments;
         tone_mapping_pass_input_attachment_reference.layout = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
+        // back up even 作为 tone mapping 色调映射输出附件
         RHIAttachmentReference tone_mapping_pass_color_attachment_reference {};
         tone_mapping_pass_color_attachment_reference.attachment =
             &backup_even_color_attachment_description - attachments;
         tone_mapping_pass_color_attachment_reference.layout = RHI_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-        // 4. 色调映射 SubPass
+        // 色调映射 SubPass 4
         RHISubpassDescription& tone_mapping_pass  = subpasses[E_main_camera_subpass_tone_mapping];
         tone_mapping_pass.pipelineBindPoint       = RHI_PIPELINE_BIND_POINT_GRAPHICS;
         tone_mapping_pass.inputAttachmentCount    = 1;
         tone_mapping_pass.pInputAttachments       = &tone_mapping_pass_input_attachment_reference;
         tone_mapping_pass.colorAttachmentCount    = 1;
         tone_mapping_pass.pColorAttachments       = &tone_mapping_pass_color_attachment_reference;
-        tone_mapping_pass.pDepthStencilAttachment = NULL;
+        tone_mapping_pass.pDepthStencilAttachment = nullptr;
         tone_mapping_pass.preserveAttachmentCount = 0;
-        tone_mapping_pass.pPreserveAttachments    = NULL;
+        tone_mapping_pass.pPreserveAttachments    = nullptr;
 
-        //颜色矫正输入和输出附件
+        // ---------------------- color_grading_pass ---------------------
+        //backup_even_color 颜色矫正输入
+        //backup_odd_color  作为输出附件
         RHIAttachmentReference color_grading_pass_input_attachment_reference {};
         color_grading_pass_input_attachment_reference.attachment =
             &backup_even_color_attachment_description - attachments;
@@ -452,39 +481,47 @@ namespace Piccolo
                 &backup_odd_color_attachment_description - attachments;
         color_grading_pass_color_attachment_reference.layout = RHI_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-
-        // 5. 颜色调整 SubPass
+        // 颜色调整 SubPass 5
         RHISubpassDescription& color_grading_pass  = subpasses[E_main_camera_subpass_color_grading];
         color_grading_pass.pipelineBindPoint       = RHI_PIPELINE_BIND_POINT_GRAPHICS;
         color_grading_pass.inputAttachmentCount    = 1;
         color_grading_pass.pInputAttachments       = &color_grading_pass_input_attachment_reference;
         color_grading_pass.colorAttachmentCount    = 1;
         color_grading_pass.pColorAttachments       = &color_grading_pass_color_attachment_reference;
-        color_grading_pass.pDepthStencilAttachment = NULL;
+        color_grading_pass.pDepthStencilAttachment = nullptr;
         color_grading_pass.preserveAttachmentCount = 0;
-        color_grading_pass.pPreserveAttachments    = NULL;
+        color_grading_pass.pPreserveAttachments    = nullptr;
 
+
+        // ------------------------- ui pass ---------------------
+        //backup_even_color  作为输出附件
         RHIAttachmentReference ui_pass_color_attachment_reference {};
         ui_pass_color_attachment_reference.attachment = &backup_even_color_attachment_description - attachments;
         ui_pass_color_attachment_reference.layout     = RHI_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+        // odd为上面pass输出的scene color. 所以要保留
         uint32_t ui_pass_preserve_attachment = &backup_odd_color_attachment_description - attachments;
 
-        //7. 创建 ui pass
+        //创建 ui pass 6
         RHISubpassDescription& ui_pass  = subpasses[E_main_camera_subpass_ui];
         ui_pass.pipelineBindPoint       = RHI_PIPELINE_BIND_POINT_GRAPHICS;
         ui_pass.inputAttachmentCount    = 0;
-        ui_pass.pInputAttachments       = NULL;
+        ui_pass.pInputAttachments       = nullptr;
         ui_pass.colorAttachmentCount    = 1;
         ui_pass.pColorAttachments       = &ui_pass_color_attachment_reference;
-        ui_pass.pDepthStencilAttachment = NULL;
+        ui_pass.pDepthStencilAttachment = nullptr;
         ui_pass.preserveAttachmentCount = 1;
         ui_pass.pPreserveAttachments    = &ui_pass_preserve_attachment;
 
+
+        // ------------------------- combine ui pass ---------------------
+        //backup_even_color(ui) 和 backup_odd_color(scene color) 作为输入附件
+        //交换链作为输出附件
         RHIAttachmentReference combine_ui_pass_input_attachments_reference[2] = {};
         combine_ui_pass_input_attachments_reference[0].attachment =
             &backup_odd_color_attachment_description - attachments;
         combine_ui_pass_input_attachments_reference[0].layout = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
         combine_ui_pass_input_attachments_reference[1].attachment =
             &backup_even_color_attachment_description - attachments;
         combine_ui_pass_input_attachments_reference[1].layout = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -493,7 +530,7 @@ namespace Piccolo
         combine_ui_pass_color_attachment_reference.attachment = &swapchain_image_attachment_description - attachments;
         combine_ui_pass_color_attachment_reference.layout     = RHI_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-        // 创建最终的合并ui
+        // 创建最终的合并ui 7
         RHISubpassDescription& combine_ui_pass = subpasses[E_main_camera_subpass_combine_ui];
         combine_ui_pass.pipelineBindPoint      = RHI_PIPELINE_BIND_POINT_GRAPHICS;
         combine_ui_pass.inputAttachmentCount   = sizeof(combine_ui_pass_input_attachments_reference) /
@@ -501,19 +538,20 @@ namespace Piccolo
         combine_ui_pass.pInputAttachments       = combine_ui_pass_input_attachments_reference;
         combine_ui_pass.colorAttachmentCount    = 1;
         combine_ui_pass.pColorAttachments       = &combine_ui_pass_color_attachment_reference;
-        combine_ui_pass.pDepthStencilAttachment = NULL;
+        combine_ui_pass.pDepthStencilAttachment = nullptr;
         combine_ui_pass.preserveAttachmentCount = 0;
-        combine_ui_pass.pPreserveAttachments    = NULL;
+        combine_ui_pass.pPreserveAttachments    = nullptr;
 
 
-        //创建7个依赖
-        // srcStageMask: 源subpass的那个管线阶段产生数据
-        // dstStageMask: 目subpass的那个管线阶段使用数据
-        // srcAccessMask: 源subpass如何访问数据
-        // dstAccessMask: 目subpass如何访问数据
-        RHISubpassDependency dependencies[8] = {};
+        // ----------------------------------- 7个subpass需要创建7个依赖 --------------------------
+        // srcStageMask: 执行dstSubpass前srcSubpass所要完成的阶段
+        // dstStageMask: 指定 dstSubpass的哪个阶段 为依赖主体
+        // !!!单来说两个subpass并行，dstsubpass运行到dstStageMask时需要等待srcSubpass的srcStageMask完成了才能继续执行!!!
+        // srcAccessMask: src subpass如何访问vulkan内存
+        // dstAccessMask: 目subpass如何访问访问vulkan内存
+        RHISubpassDependency dependencies[7] = {};
 
-        //灯光pass依赖shadow pass
+        //1. 灯光pass依赖shadow pass
         //源subpass在ColorAttachment阶段产生数据, Color 写数据操作
         //目subpass在FragmetnShader 阶段产生数据, Shader读数据操作
         RHISubpassDependency& deferred_lighting_pass_depend_on_shadow_map_pass = dependencies[0];
@@ -525,97 +563,124 @@ namespace Piccolo
         deferred_lighting_pass_depend_on_shadow_map_pass.dstAccessMask = RHI_ACCESS_SHADER_READ_BIT;
         deferred_lighting_pass_depend_on_shadow_map_pass.dependencyFlags = 0; // NOT BY REGION
 
-        //灯光pass依赖base pass
-        //源subpass在ColorAttachment或者FragmentShader阶段产生数据, Color/Shader 写数据操作
-        //目subpass在ColorAttachment或者FragmentShader阶段产生数据, Color/Shader 读数据操作
+        //2. 灯光pass依赖base pass
+        //灯光pass在ColorAttachment/Ps阶段执行依赖于basepass在ColorAttachment/PS的完成
+        //base pass产生数据, Color/Shader 写数据操作
+        //basepass对于附件是写操作, 灯光pass对于附件是读操作
         RHISubpassDependency& deferred_lighting_pass_depend_on_base_pass = dependencies[1];
         deferred_lighting_pass_depend_on_base_pass.srcSubpass            = E_main_camera_subpass_basepass;
         deferred_lighting_pass_depend_on_base_pass.dstSubpass            = E_main_camera_subpass_deferred_lighting;
         deferred_lighting_pass_depend_on_base_pass.srcStageMask =
-            RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+            RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         deferred_lighting_pass_depend_on_base_pass.dstStageMask =
-            RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+            RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         deferred_lighting_pass_depend_on_base_pass.srcAccessMask =
-            RHI_ACCESS_SHADER_WRITE_BIT | RHI_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            RHI_ACCESS_SHADER_WRITE_BIT |
+            RHI_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
         deferred_lighting_pass_depend_on_base_pass.dstAccessMask =
-            RHI_ACCESS_SHADER_READ_BIT | RHI_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+            RHI_ACCESS_SHADER_READ_BIT |
+            RHI_ACCESS_COLOR_ATTACHMENT_READ_BIT;
         deferred_lighting_pass_depend_on_base_pass.dependencyFlags = RHI_DEPENDENCY_BY_REGION_BIT;
 
-        //前向灯光依赖后向灯光
+        //前向灯光依赖后向灯光 3
         //源subpass在ColorAttachment或者FragmentShader阶段产生数据, Color/Shader 写数据操作
         //目subpass在ColorAttachment或者FragmentShader阶段产生数据, Color/Shader 读数据操作
         RHISubpassDependency& forward_lighting_pass_depend_on_deferred_lighting_pass = dependencies[2];
         forward_lighting_pass_depend_on_deferred_lighting_pass.srcSubpass = E_main_camera_subpass_deferred_lighting;
         forward_lighting_pass_depend_on_deferred_lighting_pass.dstSubpass = E_main_camera_subpass_forward_lighting;
         forward_lighting_pass_depend_on_deferred_lighting_pass.srcStageMask =
-            RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+            RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         forward_lighting_pass_depend_on_deferred_lighting_pass.dstStageMask =
-            RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+            RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         forward_lighting_pass_depend_on_deferred_lighting_pass.srcAccessMask =
-            RHI_ACCESS_SHADER_WRITE_BIT | RHI_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            RHI_ACCESS_SHADER_WRITE_BIT |
+            RHI_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
         forward_lighting_pass_depend_on_deferred_lighting_pass.dstAccessMask =
-            RHI_ACCESS_SHADER_READ_BIT | RHI_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+            RHI_ACCESS_SHADER_READ_BIT |
+            RHI_ACCESS_COLOR_ATTACHMENT_READ_BIT;
         forward_lighting_pass_depend_on_deferred_lighting_pass.dependencyFlags = RHI_DEPENDENCY_BY_REGION_BIT;
 
-        //色调映射依赖前向灯光
+        //色调映射依赖前向灯光 4
         //源subpass在ColorAttachment或者FragmentShader阶段产生数据, Color/Shader 写数据操作
         //目subpass在ColorAttachment或者FragmentShader阶段产生数据, Color/Shader 读数据操作
         RHISubpassDependency& tone_mapping_pass_depend_on_lighting_pass = dependencies[3];
         tone_mapping_pass_depend_on_lighting_pass.srcSubpass            = E_main_camera_subpass_forward_lighting;
         tone_mapping_pass_depend_on_lighting_pass.dstSubpass            = E_main_camera_subpass_tone_mapping;
         tone_mapping_pass_depend_on_lighting_pass.srcStageMask =
-            RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+            RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         tone_mapping_pass_depend_on_lighting_pass.dstStageMask =
-            RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+            RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         tone_mapping_pass_depend_on_lighting_pass.srcAccessMask =
-            RHI_ACCESS_SHADER_WRITE_BIT | RHI_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            RHI_ACCESS_SHADER_WRITE_BIT |
+            RHI_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
         tone_mapping_pass_depend_on_lighting_pass.dstAccessMask =
-            RHI_ACCESS_SHADER_READ_BIT | RHI_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+            RHI_ACCESS_SHADER_READ_BIT |
+            RHI_ACCESS_COLOR_ATTACHMENT_READ_BIT;
         tone_mapping_pass_depend_on_lighting_pass.dependencyFlags = RHI_DEPENDENCY_BY_REGION_BIT;
 
-        //颜色矫正依赖色调映射
+        //颜色矫正依赖色调映射 5
         //源subpass在ColorAttachment或者FragmentShader阶段产生数据, Color/Shader 写数据操作
         //目subpass在ColorAttachment或者FragmentShader阶段产生数据, Color/Shader 读数据操作
         RHISubpassDependency& color_grading_pass_depend_on_tone_mapping_pass = dependencies[4];
         color_grading_pass_depend_on_tone_mapping_pass.srcSubpass            = E_main_camera_subpass_tone_mapping;
         color_grading_pass_depend_on_tone_mapping_pass.dstSubpass            = E_main_camera_subpass_color_grading;
         color_grading_pass_depend_on_tone_mapping_pass.srcStageMask =
-            RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+            RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         color_grading_pass_depend_on_tone_mapping_pass.dstStageMask =
-            RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+            RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         color_grading_pass_depend_on_tone_mapping_pass.srcAccessMask =
-            RHI_ACCESS_SHADER_WRITE_BIT | RHI_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            RHI_ACCESS_SHADER_WRITE_BIT |
+            RHI_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
         color_grading_pass_depend_on_tone_mapping_pass.dstAccessMask =
-            RHI_ACCESS_SHADER_READ_BIT | RHI_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+            RHI_ACCESS_SHADER_READ_BIT |
+            RHI_ACCESS_COLOR_ATTACHMENT_READ_BIT;
         color_grading_pass_depend_on_tone_mapping_pass.dependencyFlags = RHI_DEPENDENCY_BY_REGION_BIT;
 
-        // UI依赖颜色矫正
-        RHISubpassDependency& ui_pass_depend_on_fxaa_pass = dependencies[6];
-        ui_pass_depend_on_fxaa_pass.srcSubpass            = E_main_camera_subpass_color_grading;
-        ui_pass_depend_on_fxaa_pass.dstSubpass            = E_main_camera_subpass_ui;
-        ui_pass_depend_on_fxaa_pass.srcStageMask =
-            RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        ui_pass_depend_on_fxaa_pass.dstStageMask =
-            RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        ui_pass_depend_on_fxaa_pass.srcAccessMask = RHI_ACCESS_SHADER_WRITE_BIT | RHI_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        ui_pass_depend_on_fxaa_pass.dstAccessMask = RHI_ACCESS_SHADER_READ_BIT | RHI_ACCESS_COLOR_ATTACHMENT_READ_BIT;
-        ui_pass_depend_on_fxaa_pass.dependencyFlags = RHI_DEPENDENCY_BY_REGION_BIT;
+        // UI依赖颜色矫正 6
+        RHISubpassDependency& ui_pass_depend_on_color_pass = dependencies[5];
+        ui_pass_depend_on_color_pass.srcSubpass            = E_main_camera_subpass_color_grading;
+        ui_pass_depend_on_color_pass.dstSubpass            = E_main_camera_subpass_ui;
+        ui_pass_depend_on_color_pass.srcStageMask =
+            RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+            RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        ui_pass_depend_on_color_pass.dstStageMask =
+            RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+            RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        ui_pass_depend_on_color_pass.srcAccessMask =
+            RHI_ACCESS_SHADER_WRITE_BIT |
+            RHI_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        ui_pass_depend_on_color_pass.dstAccessMask =
+            RHI_ACCESS_SHADER_READ_BIT |
+            RHI_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+        ui_pass_depend_on_color_pass.dependencyFlags = RHI_DEPENDENCY_BY_REGION_BIT;
 
-        // 合并UI依赖UI
-        RHISubpassDependency& combine_ui_pass_depend_on_ui_pass = dependencies[7];
+        // 合并UI依赖UI 7
+        RHISubpassDependency& combine_ui_pass_depend_on_ui_pass = dependencies[6];
         combine_ui_pass_depend_on_ui_pass.srcSubpass            = E_main_camera_subpass_ui;
         combine_ui_pass_depend_on_ui_pass.dstSubpass            = E_main_camera_subpass_combine_ui;
         combine_ui_pass_depend_on_ui_pass.srcStageMask =
-            RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+            RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         combine_ui_pass_depend_on_ui_pass.dstStageMask =
-            RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+            RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         combine_ui_pass_depend_on_ui_pass.srcAccessMask =
-            RHI_ACCESS_SHADER_WRITE_BIT | RHI_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            RHI_ACCESS_SHADER_WRITE_BIT |
+            RHI_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
         combine_ui_pass_depend_on_ui_pass.dstAccessMask =
-            RHI_ACCESS_SHADER_READ_BIT | RHI_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+            RHI_ACCESS_SHADER_READ_BIT |
+            RHI_ACCESS_COLOR_ATTACHMENT_READ_BIT;
         combine_ui_pass_depend_on_ui_pass.dependencyFlags = RHI_DEPENDENCY_BY_REGION_BIT;
 
-        // vulkan创建render pass
+        // --------------------------------  vulkan创建render pass -----------------------------
         RHIRenderPassCreateInfo renderpass_create_info {};
         renderpass_create_info.sType           = RHI_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
         renderpass_create_info.attachmentCount = (sizeof(attachments) / sizeof(attachments[0]));
@@ -664,7 +729,7 @@ namespace Piccolo
             mesh_mesh_layout_uniform_buffer_binding.descriptorType                 = RHI_DESCRIPTOR_TYPE_STORAGE_BUFFER;
             mesh_mesh_layout_uniform_buffer_binding.descriptorCount                = 1;
             mesh_mesh_layout_uniform_buffer_binding.stageFlags                     = RHI_SHADER_STAGE_VERTEX_BIT;
-            mesh_mesh_layout_uniform_buffer_binding.pImmutableSamplers             = NULL;
+            mesh_mesh_layout_uniform_buffer_binding.pImmutableSamplers             = nullptr;
 
             RHIDescriptorSetLayoutCreateInfo mesh_mesh_layout_create_info {};
             mesh_mesh_layout_create_info.sType        = RHI_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;

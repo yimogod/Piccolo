@@ -13,4 +13,8 @@ public:
     VkDevice Device;
     VkPhysicalDevice Gpu;
     VkDescriptorPool DescriptorPool;
+
+    //初始化vulkan系统. 比如
+    // 1. 描述符池子,
+    void Initialized();
 };
