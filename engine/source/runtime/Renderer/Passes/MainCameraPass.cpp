@@ -340,6 +340,9 @@ namespace Piccolo
         // color是输出附件, 可以写入数据
         // depth是深度附件, 用于深度和模板缓冲区
         //多于一个subpass需要指定subpass间的依赖
+
+        //每个子通道都可能写入一个或多个输出附件。这些附件要么是颜色附件，要么是深度-模板附件(两者之一)
+        // 通过检查子通道（它读取哪些输入附件，写入哪些输出附件），Vulkan可以构建渲染通道中的数据流向图
         RHISubpassDescription subpasses[E_main_camera_subpass_count] = {};
 
 
@@ -418,30 +421,6 @@ namespace Piccolo
         deferred_lighting_pass.preserveAttachmentCount = 0;
         deferred_lighting_pass.pPreserveAttachments    = nullptr;
 
-        //------------------------ 前向 color -----------------------
-        //和上面一样, 也是输出到了backup_odd_color
-        RHIAttachmentReference forward_lighting_pass_color_attachments_reference[1] = {};
-        forward_lighting_pass_color_attachments_reference[0].attachment =
-            &backup_odd_color_attachment_description - attachments;
-        forward_lighting_pass_color_attachments_reference[0].layout = RHI_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-        //前向depth
-        RHIAttachmentReference forward_lighting_pass_depth_attachment_reference {};
-        forward_lighting_pass_depth_attachment_reference.attachment = &depth_attachment_description - attachments;
-        forward_lighting_pass_depth_attachment_reference.layout     = RHI_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-        // lighting subpass 描述符  3
-        RHISubpassDescription& forward_lighting_pass = subpasses[E_main_camera_subpass_forward_lighting];
-        forward_lighting_pass.pipelineBindPoint      = RHI_PIPELINE_BIND_POINT_GRAPHICS;
-        forward_lighting_pass.inputAttachmentCount   = 0U;
-        forward_lighting_pass.pInputAttachments      = nullptr;
-        forward_lighting_pass.colorAttachmentCount   = sizeof(forward_lighting_pass_color_attachments_reference) /
-                                                     sizeof(forward_lighting_pass_color_attachments_reference[0]);
-        forward_lighting_pass.pColorAttachments       = &forward_lighting_pass_color_attachments_reference[0];
-        forward_lighting_pass.pDepthStencilAttachment = &forward_lighting_pass_depth_attachment_reference;
-        forward_lighting_pass.preserveAttachmentCount = 0;
-        forward_lighting_pass.pPreserveAttachments    = nullptr;
-
 
         // ---------------------- tone_mapping_pass ----------------------
         // back up odd 作为 tone mapping 输入附件
@@ -457,7 +436,7 @@ namespace Piccolo
             &backup_even_color_attachment_description - attachments;
         tone_mapping_pass_color_attachment_reference.layout = RHI_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-        // 色调映射 SubPass 4
+        // 色调映射 SubPass 3
         RHISubpassDescription& tone_mapping_pass  = subpasses[E_main_camera_subpass_tone_mapping];
         tone_mapping_pass.pipelineBindPoint       = RHI_PIPELINE_BIND_POINT_GRAPHICS;
         tone_mapping_pass.inputAttachmentCount    = 1;
@@ -481,7 +460,7 @@ namespace Piccolo
                 &backup_odd_color_attachment_description - attachments;
         color_grading_pass_color_attachment_reference.layout = RHI_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-        // 颜色调整 SubPass 5
+        // 颜色调整 SubPass 4
         RHISubpassDescription& color_grading_pass  = subpasses[E_main_camera_subpass_color_grading];
         color_grading_pass.pipelineBindPoint       = RHI_PIPELINE_BIND_POINT_GRAPHICS;
         color_grading_pass.inputAttachmentCount    = 1;
@@ -502,7 +481,7 @@ namespace Piccolo
         // odd为上面pass输出的scene color. 所以要保留
         uint32_t ui_pass_preserve_attachment = &backup_odd_color_attachment_description - attachments;
 
-        //创建 ui pass 6
+        //创建 ui pass 5
         RHISubpassDescription& ui_pass  = subpasses[E_main_camera_subpass_ui];
         ui_pass.pipelineBindPoint       = RHI_PIPELINE_BIND_POINT_GRAPHICS;
         ui_pass.inputAttachmentCount    = 0;
@@ -530,7 +509,7 @@ namespace Piccolo
         combine_ui_pass_color_attachment_reference.attachment = &swapchain_image_attachment_description - attachments;
         combine_ui_pass_color_attachment_reference.layout     = RHI_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-        // 创建最终的合并ui 7
+        // 创建最终的合并ui 6
         RHISubpassDescription& combine_ui_pass = subpasses[E_main_camera_subpass_combine_ui];
         combine_ui_pass.pipelineBindPoint      = RHI_PIPELINE_BIND_POINT_GRAPHICS;
         combine_ui_pass.inputAttachmentCount   = sizeof(combine_ui_pass_input_attachments_reference) /
@@ -549,7 +528,7 @@ namespace Piccolo
         // !!!单来说两个subpass并行，dstsubpass运行到dstStageMask时需要等待srcSubpass的srcStageMask完成了才能继续执行!!!
         // srcAccessMask: src subpass如何访问vulkan内存
         // dstAccessMask: 目subpass如何访问访问vulkan内存
-        RHISubpassDependency dependencies[7] = {};
+        RHISubpassDependency dependencies[6] = {};
 
         //1. 灯光pass依赖shadow pass
         //源subpass在ColorAttachment阶段产生数据, Color 写数据操作
@@ -584,31 +563,12 @@ namespace Piccolo
             RHI_ACCESS_COLOR_ATTACHMENT_READ_BIT;
         deferred_lighting_pass_depend_on_base_pass.dependencyFlags = RHI_DEPENDENCY_BY_REGION_BIT;
 
-        //前向灯光依赖后向灯光 3
-        //源subpass在ColorAttachment或者FragmentShader阶段产生数据, Color/Shader 写数据操作
-        //目subpass在ColorAttachment或者FragmentShader阶段产生数据, Color/Shader 读数据操作
-        RHISubpassDependency& forward_lighting_pass_depend_on_deferred_lighting_pass = dependencies[2];
-        forward_lighting_pass_depend_on_deferred_lighting_pass.srcSubpass = E_main_camera_subpass_deferred_lighting;
-        forward_lighting_pass_depend_on_deferred_lighting_pass.dstSubpass = E_main_camera_subpass_forward_lighting;
-        forward_lighting_pass_depend_on_deferred_lighting_pass.srcStageMask =
-            RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
-            RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        forward_lighting_pass_depend_on_deferred_lighting_pass.dstStageMask =
-            RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
-            RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        forward_lighting_pass_depend_on_deferred_lighting_pass.srcAccessMask =
-            RHI_ACCESS_SHADER_WRITE_BIT |
-            RHI_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        forward_lighting_pass_depend_on_deferred_lighting_pass.dstAccessMask =
-            RHI_ACCESS_SHADER_READ_BIT |
-            RHI_ACCESS_COLOR_ATTACHMENT_READ_BIT;
-        forward_lighting_pass_depend_on_deferred_lighting_pass.dependencyFlags = RHI_DEPENDENCY_BY_REGION_BIT;
 
-        //色调映射依赖前向灯光 4
+        //色调映射依赖前向灯光 3
         //源subpass在ColorAttachment或者FragmentShader阶段产生数据, Color/Shader 写数据操作
         //目subpass在ColorAttachment或者FragmentShader阶段产生数据, Color/Shader 读数据操作
-        RHISubpassDependency& tone_mapping_pass_depend_on_lighting_pass = dependencies[3];
-        tone_mapping_pass_depend_on_lighting_pass.srcSubpass            = E_main_camera_subpass_forward_lighting;
+        RHISubpassDependency& tone_mapping_pass_depend_on_lighting_pass = dependencies[2];
+        tone_mapping_pass_depend_on_lighting_pass.srcSubpass            = E_main_camera_subpass_deferred_lighting;
         tone_mapping_pass_depend_on_lighting_pass.dstSubpass            = E_main_camera_subpass_tone_mapping;
         tone_mapping_pass_depend_on_lighting_pass.srcStageMask =
             RHI_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
@@ -624,10 +584,10 @@ namespace Piccolo
             RHI_ACCESS_COLOR_ATTACHMENT_READ_BIT;
         tone_mapping_pass_depend_on_lighting_pass.dependencyFlags = RHI_DEPENDENCY_BY_REGION_BIT;
 
-        //颜色矫正依赖色调映射 5
+        //颜色矫正依赖色调映射 4
         //源subpass在ColorAttachment或者FragmentShader阶段产生数据, Color/Shader 写数据操作
         //目subpass在ColorAttachment或者FragmentShader阶段产生数据, Color/Shader 读数据操作
-        RHISubpassDependency& color_grading_pass_depend_on_tone_mapping_pass = dependencies[4];
+        RHISubpassDependency& color_grading_pass_depend_on_tone_mapping_pass = dependencies[3];
         color_grading_pass_depend_on_tone_mapping_pass.srcSubpass            = E_main_camera_subpass_tone_mapping;
         color_grading_pass_depend_on_tone_mapping_pass.dstSubpass            = E_main_camera_subpass_color_grading;
         color_grading_pass_depend_on_tone_mapping_pass.srcStageMask =
@@ -644,8 +604,8 @@ namespace Piccolo
             RHI_ACCESS_COLOR_ATTACHMENT_READ_BIT;
         color_grading_pass_depend_on_tone_mapping_pass.dependencyFlags = RHI_DEPENDENCY_BY_REGION_BIT;
 
-        // UI依赖颜色矫正 6
-        RHISubpassDependency& ui_pass_depend_on_color_pass = dependencies[5];
+        // UI依赖颜色矫正 5
+        RHISubpassDependency& ui_pass_depend_on_color_pass = dependencies[4];
         ui_pass_depend_on_color_pass.srcSubpass            = E_main_camera_subpass_color_grading;
         ui_pass_depend_on_color_pass.dstSubpass            = E_main_camera_subpass_ui;
         ui_pass_depend_on_color_pass.srcStageMask =
@@ -662,8 +622,8 @@ namespace Piccolo
             RHI_ACCESS_COLOR_ATTACHMENT_READ_BIT;
         ui_pass_depend_on_color_pass.dependencyFlags = RHI_DEPENDENCY_BY_REGION_BIT;
 
-        // 合并UI依赖UI 7
-        RHISubpassDependency& combine_ui_pass_depend_on_ui_pass = dependencies[6];
+        // 合并UI依赖UI 6
+        RHISubpassDependency& combine_ui_pass_depend_on_ui_pass = dependencies[5];
         combine_ui_pass_depend_on_ui_pass.srcSubpass            = E_main_camera_subpass_ui;
         combine_ui_pass_depend_on_ui_pass.dstSubpass            = E_main_camera_subpass_combine_ui;
         combine_ui_pass_depend_on_ui_pass.srcStageMask =
@@ -698,10 +658,7 @@ namespace Piccolo
 
     void UMainCameraPass::setupDescriptorSetLayout()
     {
-        //每个子通道都可能写入一个或多个输出附件。这些附件要么是颜色附件，要么是深度-模板附件(两者之一)
-        // 通过检查子通道（它读取哪些输入附件，写入哪些输出附件），Vulkan可以构建渲染通道中的数据流向图
-
-        //用到的shader的uniform的槽位信息, 8种布局
+        //用到的shader的uniform的槽位信息, 6种布局
         m_descriptor_infos.resize(_layout_type_count);
         // descriptorType
         // Sampler 采样器, 对Buffer读入数据时进行采样, 坐标转换等操作, 不可写入
@@ -719,7 +676,7 @@ namespace Piccolo
         // StorageBufferDynamic一样
 
         // mesh_mesh shader, 只用到了一个layout, 顶点uniform
-        //
+        // TODO 对应那个shader?
         {
             RHIDescriptorSetLayoutBinding mesh_mesh_layout_bindings[1];
 
@@ -743,7 +700,7 @@ namespace Piccolo
             }
         }
 
-        // 8个绑定, mesh global, 和mesh.frag的set=0的8个绑定对应上了
+        //_mesh_global. 8个绑定, mesh global, 和mesh.frag的set=0的8个绑定对应上了
         {
             RHIDescriptorSetLayoutBinding mesh_global_layout_bindings[8];
 
@@ -755,8 +712,9 @@ namespace Piccolo
                 RHI_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
             mesh_global_layout_perframe_storage_buffer_binding.descriptorCount = 1;
             mesh_global_layout_perframe_storage_buffer_binding.stageFlags =
-                RHI_SHADER_STAGE_VERTEX_BIT | RHI_SHADER_STAGE_FRAGMENT_BIT;
-            mesh_global_layout_perframe_storage_buffer_binding.pImmutableSamplers = NULL;
+                RHI_SHADER_STAGE_VERTEX_BIT |
+                RHI_SHADER_STAGE_FRAGMENT_BIT;
+            mesh_global_layout_perframe_storage_buffer_binding.pImmutableSamplers = nullptr;
 
             //vulkan instance
             RHIDescriptorSetLayoutBinding& mesh_global_layout_perdrawcall_storage_buffer_binding =
@@ -825,7 +783,7 @@ namespace Piccolo
             }
         }
 
-        // 6个layout, 标准的mesh PBR shader?和mesh_gbuffer.frag对应上了
+        //_mesh_per_material. 6个layout, 标准的mesh PBR shader?和mesh_gbuffer.frag对应上了
         {
             RHIDescriptorSetLayoutBinding mesh_material_layout_bindings[6];
 
@@ -885,7 +843,7 @@ namespace Piccolo
             }
         }
 
-        //天空盒layout
+        //_skybox. 天空盒layout
         {
             RHIDescriptorSetLayoutBinding skybox_layout_bindings[2];
 
@@ -894,14 +852,14 @@ namespace Piccolo
             skybox_layout_perframe_storage_buffer_binding.descriptorType  = RHI_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
             skybox_layout_perframe_storage_buffer_binding.descriptorCount = 1;
             skybox_layout_perframe_storage_buffer_binding.stageFlags      = RHI_SHADER_STAGE_VERTEX_BIT;
-            skybox_layout_perframe_storage_buffer_binding.pImmutableSamplers = NULL;
+            skybox_layout_perframe_storage_buffer_binding.pImmutableSamplers = nullptr;
 
             RHIDescriptorSetLayoutBinding& skybox_layout_specular_texture_binding = skybox_layout_bindings[1];
             skybox_layout_specular_texture_binding.binding                        = 1;
             skybox_layout_specular_texture_binding.descriptorType     = RHI_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             skybox_layout_specular_texture_binding.descriptorCount    = 1;
             skybox_layout_specular_texture_binding.stageFlags         = RHI_SHADER_STAGE_FRAGMENT_BIT;
-            skybox_layout_specular_texture_binding.pImmutableSamplers = NULL;
+            skybox_layout_specular_texture_binding.pImmutableSamplers = nullptr;
 
             RHIDescriptorSetLayoutCreateInfo skybox_layout_create_info {};
             skybox_layout_create_info.sType        = RHI_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -945,7 +903,7 @@ namespace Piccolo
             }
         }
 
-        // lighting的GBuffer的布局
+        //defferlight lighting的GBuffer的布局
         {
             RHIDescriptorSetLayoutBinding gbuffer_lighting_global_layout_bindings[4];
 
@@ -982,7 +940,7 @@ namespace Piccolo
 
             RHIDescriptorSetLayoutCreateInfo gbuffer_lighting_global_layout_create_info;
             gbuffer_lighting_global_layout_create_info.sType = RHI_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-            gbuffer_lighting_global_layout_create_info.pNext = NULL;
+            gbuffer_lighting_global_layout_create_info.pNext = nullptr;
             gbuffer_lighting_global_layout_create_info.flags = 0;
             gbuffer_lighting_global_layout_create_info.bindingCount =
                 sizeof(gbuffer_lighting_global_layout_bindings) / sizeof(gbuffer_lighting_global_layout_bindings[0]);
@@ -1319,284 +1277,6 @@ namespace Piccolo
             m_rhi->destroyShaderModule(frag_shader_module);
         }
 
-        // mesh lighting
-        {
-            RHIDescriptorSetLayout*     descriptorset_layouts[3] = {m_descriptor_infos[_mesh_global].layout,
-                                                                m_descriptor_infos[_per_mesh].layout,
-                                                                m_descriptor_infos[_mesh_per_material].layout};
-            RHIPipelineLayoutCreateInfo pipeline_layout_create_info {};
-            pipeline_layout_create_info.sType          = RHI_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            pipeline_layout_create_info.setLayoutCount = 3;
-            pipeline_layout_create_info.pSetLayouts    = descriptorset_layouts;
-
-            if (m_rhi->createPipelineLayout(&pipeline_layout_create_info,
-                                            m_render_pipelines[_render_pipeline_type_mesh_lighting].layout) !=
-                RHI_SUCCESS)
-            {
-                throw std::runtime_error("create mesh lighting pipeline layout");
-            }
-
-            RHIShader* vert_shader_module = m_rhi->createShaderModule(MESH_VERT);
-            RHIShader* frag_shader_module = m_rhi->createShaderModule(MESH_FRAG);
-
-            RHIPipelineShaderStageCreateInfo vert_pipeline_shader_stage_create_info {};
-            vert_pipeline_shader_stage_create_info.sType  = RHI_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            vert_pipeline_shader_stage_create_info.stage  = RHI_SHADER_STAGE_VERTEX_BIT;
-            vert_pipeline_shader_stage_create_info.module = vert_shader_module;
-            vert_pipeline_shader_stage_create_info.pName  = "main";
-
-            RHIPipelineShaderStageCreateInfo frag_pipeline_shader_stage_create_info {};
-            frag_pipeline_shader_stage_create_info.sType  = RHI_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            frag_pipeline_shader_stage_create_info.stage  = RHI_SHADER_STAGE_FRAGMENT_BIT;
-            frag_pipeline_shader_stage_create_info.module = frag_shader_module;
-            frag_pipeline_shader_stage_create_info.pName  = "main";
-
-            RHIPipelineShaderStageCreateInfo shader_stages[] = {vert_pipeline_shader_stage_create_info,
-                                                                frag_pipeline_shader_stage_create_info};
-
-            auto vertex_binding_descriptions   = MeshVertex::getBindingDescriptions();
-            auto vertex_attribute_descriptions = MeshVertex::getAttributeDescriptions();
-            RHIPipelineVertexInputStateCreateInfo vertex_input_state_create_info {};
-            vertex_input_state_create_info.sType = RHI_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-            vertex_input_state_create_info.vertexBindingDescriptionCount   = vertex_binding_descriptions.size();
-            vertex_input_state_create_info.pVertexBindingDescriptions      = &vertex_binding_descriptions[0];
-            vertex_input_state_create_info.vertexAttributeDescriptionCount = vertex_attribute_descriptions.size();
-            vertex_input_state_create_info.pVertexAttributeDescriptions    = &vertex_attribute_descriptions[0];
-
-            RHIPipelineInputAssemblyStateCreateInfo input_assembly_create_info {};
-            input_assembly_create_info.sType    = RHI_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-            input_assembly_create_info.topology = RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-            input_assembly_create_info.primitiveRestartEnable = RHI_FALSE;
-
-            RHIPipelineViewportStateCreateInfo viewport_state_create_info {};
-            viewport_state_create_info.sType         = RHI_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-            viewport_state_create_info.viewportCount = 1;
-            viewport_state_create_info.pViewports    = m_rhi->getSwapchainInfo().viewport;
-            viewport_state_create_info.scissorCount  = 1;
-            viewport_state_create_info.pScissors     = m_rhi->getSwapchainInfo().scissor;
-
-            RHIPipelineRasterizationStateCreateInfo rasterization_state_create_info {};
-            rasterization_state_create_info.sType = RHI_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-            rasterization_state_create_info.depthClampEnable        = RHI_FALSE;
-            rasterization_state_create_info.rasterizerDiscardEnable = RHI_FALSE;
-            rasterization_state_create_info.polygonMode             = RHI_POLYGON_MODE_FILL;
-            rasterization_state_create_info.lineWidth               = 1.0f;
-            rasterization_state_create_info.cullMode                = RHI_CULL_MODE_BACK_BIT;
-            rasterization_state_create_info.frontFace               = RHI_FRONT_FACE_COUNTER_CLOCKWISE;
-            rasterization_state_create_info.depthBiasEnable         = RHI_FALSE;
-            rasterization_state_create_info.depthBiasConstantFactor = 0.0f;
-            rasterization_state_create_info.depthBiasClamp          = 0.0f;
-            rasterization_state_create_info.depthBiasSlopeFactor    = 0.0f;
-
-            RHIPipelineMultisampleStateCreateInfo multisample_state_create_info {};
-            multisample_state_create_info.sType = RHI_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-            multisample_state_create_info.sampleShadingEnable  = RHI_FALSE;
-            multisample_state_create_info.rasterizationSamples = RHI_SAMPLE_COUNT_1_BIT;
-
-            RHIPipelineColorBlendAttachmentState color_blend_attachments[1] = {};
-            color_blend_attachments[0].colorWriteMask = RHI_COLOR_COMPONENT_R_BIT | RHI_COLOR_COMPONENT_G_BIT |
-                                                        RHI_COLOR_COMPONENT_B_BIT | RHI_COLOR_COMPONENT_A_BIT;
-            color_blend_attachments[0].blendEnable         = RHI_FALSE;
-            color_blend_attachments[0].srcColorBlendFactor = RHI_BLEND_FACTOR_ONE;
-            color_blend_attachments[0].dstColorBlendFactor = RHI_BLEND_FACTOR_ONE;
-            color_blend_attachments[0].colorBlendOp        = RHI_BLEND_OP_ADD;
-            color_blend_attachments[0].srcAlphaBlendFactor = RHI_BLEND_FACTOR_ONE;
-            color_blend_attachments[0].dstAlphaBlendFactor = RHI_BLEND_FACTOR_ONE;
-            color_blend_attachments[0].alphaBlendOp        = RHI_BLEND_OP_ADD;
-
-            RHIPipelineColorBlendStateCreateInfo color_blend_state_create_info = {};
-            color_blend_state_create_info.sType         = RHI_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-            color_blend_state_create_info.logicOpEnable = RHI_FALSE;
-            color_blend_state_create_info.logicOp       = RHI_LOGIC_OP_COPY;
-            color_blend_state_create_info.attachmentCount =
-                sizeof(color_blend_attachments) / sizeof(color_blend_attachments[0]);
-            color_blend_state_create_info.pAttachments      = &color_blend_attachments[0];
-            color_blend_state_create_info.blendConstants[0] = 0.0f;
-            color_blend_state_create_info.blendConstants[1] = 0.0f;
-            color_blend_state_create_info.blendConstants[2] = 0.0f;
-            color_blend_state_create_info.blendConstants[3] = 0.0f;
-
-            RHIPipelineDepthStencilStateCreateInfo depth_stencil_create_info {};
-            depth_stencil_create_info.sType            = RHI_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-            depth_stencil_create_info.depthTestEnable  = RHI_TRUE;
-            depth_stencil_create_info.depthWriteEnable = RHI_TRUE;
-            depth_stencil_create_info.depthCompareOp   = RHI_COMPARE_OP_LESS;
-            depth_stencil_create_info.depthBoundsTestEnable = RHI_FALSE;
-            depth_stencil_create_info.stencilTestEnable     = RHI_FALSE;
-
-            RHIDynamicState dynamic_states[] = {RHI_DYNAMIC_STATE_VIEWPORT, RHI_DYNAMIC_STATE_SCISSOR};
-            RHIPipelineDynamicStateCreateInfo dynamic_state_create_info {};
-            dynamic_state_create_info.sType             = RHI_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-            dynamic_state_create_info.dynamicStateCount = 2;
-            dynamic_state_create_info.pDynamicStates    = dynamic_states;
-
-            RHIGraphicsPipelineCreateInfo pipelineInfo {};
-            pipelineInfo.sType               = RHI_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-            pipelineInfo.stageCount          = 2;
-            pipelineInfo.pStages             = shader_stages;
-            pipelineInfo.pVertexInputState   = &vertex_input_state_create_info;
-            pipelineInfo.pInputAssemblyState = &input_assembly_create_info;
-            pipelineInfo.pViewportState      = &viewport_state_create_info;
-            pipelineInfo.pRasterizationState = &rasterization_state_create_info;
-            pipelineInfo.pMultisampleState   = &multisample_state_create_info;
-            pipelineInfo.pColorBlendState    = &color_blend_state_create_info;
-            pipelineInfo.pDepthStencilState  = &depth_stencil_create_info;
-            pipelineInfo.layout              = m_render_pipelines[_render_pipeline_type_mesh_lighting].layout;
-            pipelineInfo.renderPass          = m_framebuffer.render_pass;
-            pipelineInfo.subpass             = E_main_camera_subpass_forward_lighting;
-            pipelineInfo.basePipelineHandle  = RHI_NULL_HANDLE;
-            pipelineInfo.pDynamicState       = &dynamic_state_create_info;
-
-            if (m_rhi->createGraphicsPipelines(RHI_NULL_HANDLE,
-                                               1,
-                                               &pipelineInfo,
-                                               m_render_pipelines[_render_pipeline_type_mesh_lighting].pipeline) !=
-                RHI_SUCCESS)
-            {
-                throw std::runtime_error("create mesh lighting graphics pipeline");
-            }
-
-            m_rhi->destroyShaderModule(vert_shader_module);
-            m_rhi->destroyShaderModule(frag_shader_module);
-        }
-
-        // skybox
-        {
-            RHIDescriptorSetLayout*     descriptorset_layouts[1] = {m_descriptor_infos[_skybox].layout};
-            RHIPipelineLayoutCreateInfo pipeline_layout_create_info {};
-            pipeline_layout_create_info.sType          = RHI_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            pipeline_layout_create_info.setLayoutCount = 1;
-            pipeline_layout_create_info.pSetLayouts    = descriptorset_layouts;
-
-            if (m_rhi->createPipelineLayout(&pipeline_layout_create_info,
-                                            m_render_pipelines[_render_pipeline_type_skybox].layout) != RHI_SUCCESS)
-            {
-                throw std::runtime_error("create skybox pipeline layout");
-            }
-
-            RHIShader* vert_shader_module = m_rhi->createShaderModule(SKYBOX_VERT);
-            RHIShader* frag_shader_module = m_rhi->createShaderModule(SKYBOX_FRAG);
-
-            RHIPipelineShaderStageCreateInfo vert_pipeline_shader_stage_create_info {};
-            vert_pipeline_shader_stage_create_info.sType  = RHI_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            vert_pipeline_shader_stage_create_info.stage  = RHI_SHADER_STAGE_VERTEX_BIT;
-            vert_pipeline_shader_stage_create_info.module = vert_shader_module;
-            vert_pipeline_shader_stage_create_info.pName  = "main";
-            // vert_pipeline_shader_stage_create_info.pSpecializationInfo
-
-            RHIPipelineShaderStageCreateInfo frag_pipeline_shader_stage_create_info {};
-            frag_pipeline_shader_stage_create_info.sType  = RHI_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            frag_pipeline_shader_stage_create_info.stage  = RHI_SHADER_STAGE_FRAGMENT_BIT;
-            frag_pipeline_shader_stage_create_info.module = frag_shader_module;
-            frag_pipeline_shader_stage_create_info.pName  = "main";
-
-            RHIPipelineShaderStageCreateInfo shader_stages[] = {vert_pipeline_shader_stage_create_info,
-                                                                frag_pipeline_shader_stage_create_info};
-
-            auto vertex_binding_descriptions   = MeshVertex::getBindingDescriptions();
-            auto vertex_attribute_descriptions = MeshVertex::getAttributeDescriptions();
-            RHIPipelineVertexInputStateCreateInfo vertex_input_state_create_info {};
-            vertex_input_state_create_info.sType = RHI_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-            vertex_input_state_create_info.vertexBindingDescriptionCount   = 0;
-            vertex_input_state_create_info.pVertexBindingDescriptions      = NULL;
-            vertex_input_state_create_info.vertexAttributeDescriptionCount = 0;
-            vertex_input_state_create_info.pVertexAttributeDescriptions    = NULL;
-
-            RHIPipelineInputAssemblyStateCreateInfo input_assembly_create_info {};
-            input_assembly_create_info.sType    = RHI_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-            input_assembly_create_info.topology = RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-            input_assembly_create_info.primitiveRestartEnable = RHI_FALSE;
-
-            RHIPipelineViewportStateCreateInfo viewport_state_create_info {};
-            viewport_state_create_info.sType         = RHI_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-            viewport_state_create_info.viewportCount = 1;
-            viewport_state_create_info.pViewports    = m_rhi->getSwapchainInfo().viewport;
-            viewport_state_create_info.scissorCount  = 1;
-            viewport_state_create_info.pScissors     = m_rhi->getSwapchainInfo().scissor;
-
-            RHIPipelineRasterizationStateCreateInfo rasterization_state_create_info {};
-            rasterization_state_create_info.sType = RHI_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-            rasterization_state_create_info.depthClampEnable        = RHI_FALSE;
-            rasterization_state_create_info.rasterizerDiscardEnable = RHI_FALSE;
-            rasterization_state_create_info.polygonMode             = RHI_POLYGON_MODE_FILL;
-            rasterization_state_create_info.lineWidth               = 1.0f;
-            rasterization_state_create_info.cullMode                = RHI_CULL_MODE_BACK_BIT;
-            rasterization_state_create_info.frontFace               = RHI_FRONT_FACE_COUNTER_CLOCKWISE;
-            rasterization_state_create_info.depthBiasEnable         = RHI_FALSE;
-            rasterization_state_create_info.depthBiasConstantFactor = 0.0f;
-            rasterization_state_create_info.depthBiasClamp          = 0.0f;
-            rasterization_state_create_info.depthBiasSlopeFactor    = 0.0f;
-
-            RHIPipelineMultisampleStateCreateInfo multisample_state_create_info {};
-            multisample_state_create_info.sType = RHI_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-            multisample_state_create_info.sampleShadingEnable  = RHI_FALSE;
-            multisample_state_create_info.rasterizationSamples = RHI_SAMPLE_COUNT_1_BIT;
-
-            RHIPipelineColorBlendAttachmentState color_blend_attachments[1] = {};
-            color_blend_attachments[0].colorWriteMask = RHI_COLOR_COMPONENT_R_BIT | RHI_COLOR_COMPONENT_G_BIT |
-                                                        RHI_COLOR_COMPONENT_B_BIT | RHI_COLOR_COMPONENT_A_BIT;
-            color_blend_attachments[0].blendEnable         = RHI_FALSE;
-            color_blend_attachments[0].srcColorBlendFactor = RHI_BLEND_FACTOR_ONE;
-            color_blend_attachments[0].dstColorBlendFactor = RHI_BLEND_FACTOR_ZERO;
-            color_blend_attachments[0].colorBlendOp        = RHI_BLEND_OP_ADD;
-            color_blend_attachments[0].srcAlphaBlendFactor = RHI_BLEND_FACTOR_ONE;
-            color_blend_attachments[0].dstAlphaBlendFactor = RHI_BLEND_FACTOR_ZERO;
-            color_blend_attachments[0].alphaBlendOp        = RHI_BLEND_OP_ADD;
-
-            RHIPipelineColorBlendStateCreateInfo color_blend_state_create_info = {};
-            color_blend_state_create_info.sType         = RHI_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-            color_blend_state_create_info.logicOpEnable = RHI_FALSE;
-            color_blend_state_create_info.logicOp       = RHI_LOGIC_OP_COPY;
-            color_blend_state_create_info.attachmentCount =
-                sizeof(color_blend_attachments) / sizeof(color_blend_attachments[0]);
-            color_blend_state_create_info.pAttachments      = &color_blend_attachments[0];
-            color_blend_state_create_info.blendConstants[0] = 0.0f;
-            color_blend_state_create_info.blendConstants[1] = 0.0f;
-            color_blend_state_create_info.blendConstants[2] = 0.0f;
-            color_blend_state_create_info.blendConstants[3] = 0.0f;
-
-            RHIPipelineDepthStencilStateCreateInfo depth_stencil_create_info {};
-            depth_stencil_create_info.sType            = RHI_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-            depth_stencil_create_info.depthTestEnable  = RHI_TRUE;
-            depth_stencil_create_info.depthWriteEnable = RHI_TRUE;
-            depth_stencil_create_info.depthCompareOp   = RHI_COMPARE_OP_LESS;
-            depth_stencil_create_info.depthBoundsTestEnable = RHI_FALSE;
-            depth_stencil_create_info.stencilTestEnable     = RHI_FALSE;
-
-            RHIDynamicState dynamic_states[] = {RHI_DYNAMIC_STATE_VIEWPORT, RHI_DYNAMIC_STATE_SCISSOR};
-            RHIPipelineDynamicStateCreateInfo dynamic_state_create_info {};
-            dynamic_state_create_info.sType             = RHI_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-            dynamic_state_create_info.dynamicStateCount = 2;
-            dynamic_state_create_info.pDynamicStates    = dynamic_states;
-
-            RHIGraphicsPipelineCreateInfo pipelineInfo {};
-            pipelineInfo.sType               = RHI_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-            pipelineInfo.stageCount          = 2;
-            pipelineInfo.pStages             = shader_stages;
-            pipelineInfo.pVertexInputState   = &vertex_input_state_create_info;
-            pipelineInfo.pInputAssemblyState = &input_assembly_create_info;
-            pipelineInfo.pViewportState      = &viewport_state_create_info;
-            pipelineInfo.pRasterizationState = &rasterization_state_create_info;
-            pipelineInfo.pMultisampleState   = &multisample_state_create_info;
-            pipelineInfo.pColorBlendState    = &color_blend_state_create_info;
-            pipelineInfo.pDepthStencilState  = &depth_stencil_create_info;
-            pipelineInfo.layout              = m_render_pipelines[_render_pipeline_type_skybox].layout;
-            pipelineInfo.renderPass          = m_framebuffer.render_pass;
-            pipelineInfo.subpass             = E_main_camera_subpass_forward_lighting;
-            pipelineInfo.basePipelineHandle  = RHI_NULL_HANDLE;
-            pipelineInfo.pDynamicState       = &dynamic_state_create_info;
-
-            if (RHI_SUCCESS !=
-                m_rhi->createGraphicsPipelines(
-                    RHI_NULL_HANDLE, 1, &pipelineInfo, m_render_pipelines[_render_pipeline_type_skybox].pipeline))
-            {
-                throw std::runtime_error("create skybox graphics pipeline");
-            }
-
-            m_rhi->destroyShaderModule(vert_shader_module);
-            m_rhi->destroyShaderModule(frag_shader_module);
-        }
-
         // draw axis
         {
             RHIDescriptorSetLayout*     descriptorset_layouts[1] = {m_descriptor_infos[_axis].layout};
@@ -1756,7 +1436,7 @@ namespace Piccolo
         // update common model's global descriptor set
         RHIDescriptorSetAllocateInfo mesh_global_descriptor_set_alloc_info;
         mesh_global_descriptor_set_alloc_info.sType              = RHI_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        mesh_global_descriptor_set_alloc_info.pNext              = NULL;
+        mesh_global_descriptor_set_alloc_info.pNext              = nullptr;
         mesh_global_descriptor_set_alloc_info.descriptorPool     = m_rhi->getDescriptorPoor();
         mesh_global_descriptor_set_alloc_info.descriptorSetCount = 1;
         mesh_global_descriptor_set_alloc_info.pSetLayouts        = &m_descriptor_infos[_mesh_global].layout;
@@ -1830,7 +1510,7 @@ namespace Piccolo
         RHIWriteDescriptorSet mesh_descriptor_writes_info[8];
 
         mesh_descriptor_writes_info[0].sType           = RHI_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        mesh_descriptor_writes_info[0].pNext           = NULL;
+        mesh_descriptor_writes_info[0].pNext           = nullptr;
         mesh_descriptor_writes_info[0].dstSet          = m_descriptor_infos[_mesh_global].descriptor_set;
         mesh_descriptor_writes_info[0].dstBinding      = 0;
         mesh_descriptor_writes_info[0].dstArrayElement = 0;
@@ -1884,14 +1564,14 @@ namespace Piccolo
         m_rhi->updateDescriptorSets(sizeof(mesh_descriptor_writes_info) / sizeof(mesh_descriptor_writes_info[0]),
                                     mesh_descriptor_writes_info,
                                     0,
-                                    NULL);
+                                    nullptr);
     }
 
     void UMainCameraPass::setupSkyboxDescriptorSet()
     {
         RHIDescriptorSetAllocateInfo skybox_descriptor_set_alloc_info;
         skybox_descriptor_set_alloc_info.sType              = RHI_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        skybox_descriptor_set_alloc_info.pNext              = NULL;
+        skybox_descriptor_set_alloc_info.pNext              = nullptr;
         skybox_descriptor_set_alloc_info.descriptorPool     = m_rhi->getDescriptorPoor();
         skybox_descriptor_set_alloc_info.descriptorSetCount = 1;
         skybox_descriptor_set_alloc_info.pSetLayouts        = &m_descriptor_infos[_skybox].layout;
@@ -1995,7 +1675,7 @@ namespace Piccolo
     {
         RHIDescriptorSetAllocateInfo gbuffer_light_global_descriptor_set_alloc_info;
         gbuffer_light_global_descriptor_set_alloc_info.sType          = RHI_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        gbuffer_light_global_descriptor_set_alloc_info.pNext          = NULL;
+        gbuffer_light_global_descriptor_set_alloc_info.pNext          = nullptr;
         gbuffer_light_global_descriptor_set_alloc_info.descriptorPool = m_rhi->getDescriptorPoor();
         gbuffer_light_global_descriptor_set_alloc_info.descriptorSetCount = 1;
         gbuffer_light_global_descriptor_set_alloc_info.pSetLayouts = &m_descriptor_infos[_deferred_lighting].layout;
@@ -2038,6 +1718,7 @@ namespace Piccolo
         depth_input_attachment_info.imageView              = m_rhi->getDepthImageInfo().depth_image_view;
         depth_input_attachment_info.imageLayout            = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
+        // ------------------ 4个 write ----------------------------
         RHIWriteDescriptorSet deferred_lighting_descriptor_writes_info[4];
 
         RHIWriteDescriptorSet& gbuffer_normal_descriptor_input_attachment_write_info =
@@ -2193,39 +1874,40 @@ namespace Piccolo
         }
 
         float color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-        m_rhi->pushEvent(m_rhi->getCurrentCommandBuffer(), "BasePass", color);
 
+
+        // subpass 1
+        m_rhi->pushEvent(m_rhi->getCurrentCommandBuffer(), "BasePass", color);
         //将几何信息存到GBuffer中
         drawMeshGbuffer();
-
         m_rhi->popEvent(m_rhi->getCurrentCommandBuffer());
 
+        // subpass 2
         m_rhi->cmdNextSubpassPFN(m_rhi->getCurrentCommandBuffer(), RHI_SUBPASS_CONTENTS_INLINE);
-
         m_rhi->pushEvent(m_rhi->getCurrentCommandBuffer(), "Deferred Lighting", color);
-
         // DeffereLighting SubPass
         // 利用GBuffer中缓存的信息进行光照计算
         drawDeferredLighting();
-
         m_rhi->popEvent(m_rhi->getCurrentCommandBuffer());
 
+        // subpass 3
         m_rhi->cmdNextSubpassPFN(m_rhi->getCurrentCommandBuffer(), RHI_SUBPASS_CONTENTS_INLINE);
-
-        m_rhi->pushEvent(m_rhi->getCurrentCommandBuffer(), "Forward Lighting", color);
-
+        m_rhi->pushEvent(m_rhi->getCurrentCommandBuffer(), "Tone Mapping", color);
         // tone mapping subpass
         tone_mapping_pass.draw();
+        m_rhi->popEvent(m_rhi->getCurrentCommandBuffer());
 
+        // subpass 4
         m_rhi->cmdNextSubpassPFN(m_rhi->getCurrentCommandBuffer(), RHI_SUBPASS_CONTENTS_INLINE);
-
+        m_rhi->pushEvent(m_rhi->getCurrentCommandBuffer(), "Color Grading", color);
         // color grading subpass
         color_grading_pass.draw();
+        m_rhi->popEvent(m_rhi->getCurrentCommandBuffer());
 
+
+        // subpass 5
         m_rhi->cmdNextSubpassPFN(m_rhi->getCurrentCommandBuffer(), RHI_SUBPASS_CONTENTS_INLINE);
-
-        m_rhi->cmdNextSubpassPFN(m_rhi->getCurrentCommandBuffer(), RHI_SUBPASS_CONTENTS_INLINE);
-
+        m_rhi->pushEvent(m_rhi->getCurrentCommandBuffer(), "Slate", color);
         //绘制坐标轴之前, 需要清除位于当前渲染通道中索引为0的ColorAttachment附件.
         RHIClearAttachment clear_attachments[1];
         clear_attachments[0].aspectMask                  = RHI_IMAGE_ASPECT_COLOR_BIT;
@@ -2248,12 +1930,14 @@ namespace Piccolo
                                       clear_rects);
 
         drawAxis();
-
         ui_pass.draw();
+        m_rhi->popEvent(m_rhi->getCurrentCommandBuffer());
 
+        // subpass 6
         m_rhi->cmdNextSubpassPFN(m_rhi->getCurrentCommandBuffer(), RHI_SUBPASS_CONTENTS_INLINE);
-
+        m_rhi->pushEvent(m_rhi->getCurrentCommandBuffer(), "CombineUI", color);
         combine_ui_pass.draw();
+        m_rhi->popEvent(m_rhi->getCurrentCommandBuffer());
 
         m_rhi->cmdEndRenderPassPFN(m_rhi->getCurrentCommandBuffer());
     }

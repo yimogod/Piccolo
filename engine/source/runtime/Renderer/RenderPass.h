@@ -38,7 +38,6 @@ namespace Piccolo
     {
         E_main_camera_subpass_basepass = 0,
         E_main_camera_subpass_deferred_lighting,
-        E_main_camera_subpass_forward_lighting,
         E_main_camera_subpass_tone_mapping,
         E_main_camera_subpass_color_grading,
         E_main_camera_subpass_ui,

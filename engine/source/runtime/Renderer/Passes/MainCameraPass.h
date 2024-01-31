@@ -28,7 +28,6 @@ namespace Piccolo
             _mesh_per_material,
             _skybox,
             _axis,
-            _particle,
             _deferred_lighting,
             _layout_type_count
         };
@@ -44,7 +43,6 @@ namespace Piccolo
             _render_pipeline_type_mesh_lighting,
             _render_pipeline_type_skybox,
             _render_pipeline_type_axis,
-            _render_pipeline_type_particle,
             _render_pipeline_type_count
         };
 
