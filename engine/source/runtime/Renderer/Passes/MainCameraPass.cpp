@@ -13,11 +13,8 @@
 #include <axis_vert.h>
 #include <deferred_lighting_frag.h>
 #include <deferred_lighting_vert.h>
-#include <mesh_frag.h>
 #include <mesh_gbuffer_frag.h>
 #include <mesh_vert.h>
-#include <skybox_frag.h>
-#include <skybox_vert.h>
 
 namespace Piccolo
 {
@@ -28,18 +25,18 @@ namespace Piccolo
         //总结一句
         // shader的输入imageview/buffer是通过描述符集绑定的
         // shader的输出是subpass输出到Attachment附件的. 而这些Attachment会根据索引引用到FrameBuffer开辟的ImageView
-        setupAttachments();
+        SetupAttachments();
         //创建了1个renderpass, 包含7个subpass
         // 7个subpass对应了7个pipline, 其中4个在本类创建. 另外3个有独立的pass文件. color grading, tone maping, combine
         // ui
         //TODO 把非本pass关心的给移出去
-        setupRenderPass();
-        setupDescriptorSetLayout();
+        SetupRenderPass();
+        SetupDescriptorSetLayout();
         //创建了多个管线, pipeline和subpass一一对应
-        setupPipelines();
-        setupDescriptorSet();
-        setupFramebufferDescriptorSet();
-        setupSwapchainFramebuffers();
+        SetupPipelines();
+        SetupDescriptorSet();
+        SetupFramebufferDescriptorSet();
+        SetupSwapchainFramebuffers();
     }
 
     void UMainCameraPass::preparePassData(std::shared_ptr<RenderResourceBase> render_resource)
@@ -52,18 +49,18 @@ namespace Piccolo
         }
     }
 
-    void UMainCameraPass::setupAttachments()
+    void UMainCameraPass::SetupAttachments()
     {
         //gbuffer用到的5个缓冲区 + 后处理用到的2个
         //所以本pass总共用到了7个附件!!
-        m_framebuffer.attachments.resize(E_main_camera_pass_custom_attachment_count +
+        Framebuffer.attachments.resize(E_main_camera_pass_custom_attachment_count +
                                          E_main_camera_pass_post_process_attachment_count);
 
-        m_framebuffer.attachments[E_main_camera_pass_gbuffer_a].format          = RHI_FORMAT_R8G8B8A8_UNORM;
-        m_framebuffer.attachments[E_main_camera_pass_gbuffer_b].format          = RHI_FORMAT_R8G8B8A8_UNORM;
-        m_framebuffer.attachments[E_main_camera_pass_gbuffer_c].format          = RHI_FORMAT_R8G8B8A8_SRGB;
-        m_framebuffer.attachments[E_main_camera_pass_backup_buffer_odd].format  = RHI_FORMAT_R16G16B16A16_SFLOAT;
-        m_framebuffer.attachments[E_main_camera_pass_backup_buffer_even].format = RHI_FORMAT_R16G16B16A16_SFLOAT;
+        Framebuffer.attachments[E_main_camera_pass_gbuffer_a].format          = RHI_FORMAT_R8G8B8A8_UNORM;
+        Framebuffer.attachments[E_main_camera_pass_gbuffer_b].format          = RHI_FORMAT_R8G8B8A8_UNORM;
+        Framebuffer.attachments[E_main_camera_pass_gbuffer_c].format          = RHI_FORMAT_R8G8B8A8_SRGB;
+        Framebuffer.attachments[E_main_camera_pass_backup_buffer_odd].format  = RHI_FORMAT_R16G16B16A16_SFLOAT;
+        Framebuffer.attachments[E_main_camera_pass_backup_buffer_even].format = RHI_FORMAT_R16G16B16A16_SFLOAT;
 
         //对上面5个创建的frame buffer创建image资源
         //基本上就是GBuffer相关
@@ -83,7 +80,7 @@ namespace Piccolo
                                         m_rhi->m_device,
                                         m_rhi->m_swapchain_extent.width,
                                         m_rhi->m_swapchain_extent.height,
-                                        (VkFormat)m_framebuffer.attachments[i].format,
+                                        (VkFormat)Framebuffer.attachments[i].format,
                                         VK_IMAGE_TILING_OPTIMAL,
                                         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
                                             VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
@@ -101,7 +98,7 @@ namespace Piccolo
                                         m_rhi->m_device,
                                         m_rhi->m_swapchain_extent.width,
                                         m_rhi->m_swapchain_extent.height,
-                                        (VkFormat)m_framebuffer.attachments[i].format,
+                                        (VkFormat)Framebuffer.attachments[i].format,
                                         VK_IMAGE_TILING_OPTIMAL,
                                         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
                                             VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
@@ -117,7 +114,7 @@ namespace Piccolo
             
             VkImageView VI = VulkanUtil::createImageView(m_rhi->m_device,
                                             Image,
-                                            (VkFormat)m_framebuffer.attachments[i].format,
+                                            (VkFormat)Framebuffer.attachments[i].format,
                                             VK_IMAGE_ASPECT_COLOR_BIT,
                                             VK_IMAGE_VIEW_TYPE_2D,
                                             1,
@@ -126,22 +123,22 @@ namespace Piccolo
             //TODO 兼容引擎
             auto vim = new VulkanImage();
             vim->setResource(Image);
-            m_framebuffer.attachments[i].image = vim;
+            Framebuffer.attachments[i].image = vim;
 
             auto MM = new VulkanDeviceMemory();
             MM->setResource(Mem);
-            m_framebuffer.attachments[i].mem = MM;
+            Framebuffer.attachments[i].mem = MM;
 
             auto VIV = new VulkanImageView();
             VIV->setResource(VI);
-            m_framebuffer.attachments[i].view = VIV;
+            Framebuffer.attachments[i].view = VIV;
         }
 
 
         // 创建后处理Buffer,
         // image usage flags和上面不一样
-        m_framebuffer.attachments[E_main_camera_pass_post_process_buffer_odd].format  = RHI_FORMAT_R16G16B16A16_SFLOAT;
-        m_framebuffer.attachments[E_main_camera_pass_post_process_buffer_even].format = RHI_FORMAT_R16G16B16A16_SFLOAT;
+        Framebuffer.attachments[E_main_camera_pass_post_process_buffer_odd].format  = RHI_FORMAT_R16G16B16A16_SFLOAT;
+        Framebuffer.attachments[E_main_camera_pass_post_process_buffer_even].format = RHI_FORMAT_R16G16B16A16_SFLOAT;
 
         //5, 6 两个后处理
         for (int i = E_main_camera_pass_custom_attachment_count;
@@ -156,7 +153,7 @@ namespace Piccolo
                                     m_rhi->m_device,
                                     m_rhi->m_swapchain_extent.width,
                                     m_rhi->m_swapchain_extent.height,
-                                    (VkFormat)m_framebuffer.attachments[i].format,
+                                    (VkFormat)Framebuffer.attachments[i].format,
                                     VK_IMAGE_TILING_OPTIMAL,
                                     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
                                         VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
@@ -171,7 +168,7 @@ namespace Piccolo
 
             VkImageView VI = VulkanUtil::createImageView(m_rhi->m_device,
                                                          Image,
-                                                         (VkFormat)m_framebuffer.attachments[i].format,
+                                                         (VkFormat)Framebuffer.attachments[i].format,
                                                          VK_IMAGE_ASPECT_COLOR_BIT,
                                                          VK_IMAGE_VIEW_TYPE_2D,
                                                          1,
@@ -180,19 +177,19 @@ namespace Piccolo
             // TODO 兼容引擎
             auto vim = new VulkanImage();
             vim->setResource(Image);
-            m_framebuffer.attachments[i].image = vim;
+            Framebuffer.attachments[i].image = vim;
 
             auto MM = new VulkanDeviceMemory();
             MM->setResource(Mem);
-            m_framebuffer.attachments[i].mem = MM;
+            Framebuffer.attachments[i].mem = MM;
 
             auto VIV = new VulkanImageView();
             VIV->setResource(VI);
-            m_framebuffer.attachments[i].view = VIV;
+            Framebuffer.attachments[i].view = VIV;
         }
     }
 
-    void UMainCameraPass::setupRenderPass()
+    void UMainCameraPass::SetupRenderPass()
     {
         //创建render pass, 用了400多行代码
         //需要 VkAttachmentDescription, VkAttachmentReference, VkSubpassDependency一系列数据
@@ -219,7 +216,7 @@ namespace Piccolo
 
         // BufferA 存储法线
         RHIAttachmentDescription& gbuffer_normal_attachment_description = attachments[E_main_camera_pass_gbuffer_a];
-        gbuffer_normal_attachment_description.format  = m_framebuffer.attachments[E_main_camera_pass_gbuffer_a].format;
+        gbuffer_normal_attachment_description.format  = Framebuffer.attachments[E_main_camera_pass_gbuffer_a].format;
         gbuffer_normal_attachment_description.samples = RHI_SAMPLE_COUNT_1_BIT;
         gbuffer_normal_attachment_description.loadOp  = RHI_ATTACHMENT_LOAD_OP_CLEAR; //渲染之前对附件数据的操作, 使用常量清理
         gbuffer_normal_attachment_description.storeOp = RHI_ATTACHMENT_STORE_OP_STORE;
@@ -232,7 +229,7 @@ namespace Piccolo
         RHIAttachmentDescription& gbuffer_metallic_roughness_shadingmodeid_attachment_description =
             attachments[E_main_camera_pass_gbuffer_b];
         gbuffer_metallic_roughness_shadingmodeid_attachment_description.format =
-            m_framebuffer.attachments[E_main_camera_pass_gbuffer_b].format;
+            Framebuffer.attachments[E_main_camera_pass_gbuffer_b].format;
         gbuffer_metallic_roughness_shadingmodeid_attachment_description.samples = RHI_SAMPLE_COUNT_1_BIT;
         gbuffer_metallic_roughness_shadingmodeid_attachment_description.loadOp  = RHI_ATTACHMENT_LOAD_OP_CLEAR;
         gbuffer_metallic_roughness_shadingmodeid_attachment_description.storeOp = RHI_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -246,7 +243,7 @@ namespace Piccolo
 
         // BufferC是BaseColor, layout是ShaderReadOnly
         RHIAttachmentDescription& gbuffer_albedo_attachment_description = attachments[E_main_camera_pass_gbuffer_c];
-        gbuffer_albedo_attachment_description.format  = m_framebuffer.attachments[E_main_camera_pass_gbuffer_c].format;
+        gbuffer_albedo_attachment_description.format  = Framebuffer.attachments[E_main_camera_pass_gbuffer_c].format;
         gbuffer_albedo_attachment_description.samples = RHI_SAMPLE_COUNT_1_BIT;
         gbuffer_albedo_attachment_description.loadOp  = RHI_ATTACHMENT_LOAD_OP_CLEAR;
         gbuffer_albedo_attachment_description.storeOp        = RHI_ATTACHMENT_STORE_OP_STORE;
@@ -260,7 +257,7 @@ namespace Piccolo
         RHIAttachmentDescription& backup_odd_color_attachment_description =
             attachments[E_main_camera_pass_backup_buffer_odd];
         backup_odd_color_attachment_description.format =
-            m_framebuffer.attachments[E_main_camera_pass_backup_buffer_odd].format;
+            Framebuffer.attachments[E_main_camera_pass_backup_buffer_odd].format;
         backup_odd_color_attachment_description.samples        = RHI_SAMPLE_COUNT_1_BIT;
         backup_odd_color_attachment_description.loadOp         = RHI_ATTACHMENT_LOAD_OP_CLEAR;
         // IMPORTANT 我草. 这个如果设置为DoNotCare, 给外部用的话, 就特么会花屏,
@@ -275,7 +272,7 @@ namespace Piccolo
         RHIAttachmentDescription& backup_even_color_attachment_description =
             attachments[E_main_camera_pass_backup_buffer_even];
         backup_even_color_attachment_description.format =
-            m_framebuffer.attachments[E_main_camera_pass_backup_buffer_even].format;
+            Framebuffer.attachments[E_main_camera_pass_backup_buffer_even].format;
         backup_even_color_attachment_description.samples        = RHI_SAMPLE_COUNT_1_BIT;
         backup_even_color_attachment_description.loadOp         = RHI_ATTACHMENT_LOAD_OP_CLEAR;
         backup_even_color_attachment_description.storeOp        = RHI_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -288,7 +285,7 @@ namespace Piccolo
         RHIAttachmentDescription& post_process_odd_color_attachment_description =
             attachments[E_main_camera_pass_post_process_buffer_odd];
         post_process_odd_color_attachment_description.format =
-            m_framebuffer.attachments[E_main_camera_pass_post_process_buffer_odd].format;
+            Framebuffer.attachments[E_main_camera_pass_post_process_buffer_odd].format;
         post_process_odd_color_attachment_description.samples        = RHI_SAMPLE_COUNT_1_BIT;
         post_process_odd_color_attachment_description.loadOp         = RHI_ATTACHMENT_LOAD_OP_CLEAR;
         post_process_odd_color_attachment_description.storeOp        = RHI_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -301,7 +298,7 @@ namespace Piccolo
         RHIAttachmentDescription& post_process_even_color_attachment_description =
             attachments[E_main_camera_pass_post_process_buffer_even];
         post_process_even_color_attachment_description.format =
-            m_framebuffer.attachments[E_main_camera_pass_post_process_buffer_even].format;
+            Framebuffer.attachments[E_main_camera_pass_post_process_buffer_even].format;
         post_process_even_color_attachment_description.samples        = RHI_SAMPLE_COUNT_1_BIT;
         post_process_even_color_attachment_description.loadOp         = RHI_ATTACHMENT_LOAD_OP_CLEAR;
         post_process_even_color_attachment_description.storeOp        = RHI_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -650,13 +647,13 @@ namespace Piccolo
         renderpass_create_info.dependencyCount = (sizeof(dependencies) / sizeof(dependencies[0]));
         renderpass_create_info.pDependencies   = dependencies;
 
-        if (m_rhi->createRenderPass(&renderpass_create_info, m_framebuffer.render_pass) != RHI_SUCCESS)
+        if (m_rhi->createRenderPass(&renderpass_create_info, Framebuffer.render_pass) != RHI_SUCCESS)
         {
             throw std::runtime_error("failed to create render pass");
         }
     }
 
-    void UMainCameraPass::setupDescriptorSetLayout()
+    void UMainCameraPass::SetupDescriptorSetLayout()
     {
         //用到的shader的uniform的槽位信息, 6种布局
         m_descriptor_infos.resize(_layout_type_count);
@@ -955,9 +952,9 @@ namespace Piccolo
     }
 
     //创建了4个管线. 对应MainCameraPass对应的主要subpass
-    void UMainCameraPass::setupPipelines()
+    void UMainCameraPass::SetupPipelines()
     {
-        m_render_pipelines.resize(_render_pipeline_type_count);
+        Pipelines.resize(_render_pipeline_type_count);
 
         // mesh gbuffer用到了3个layout, 
         {
@@ -972,7 +969,7 @@ namespace Piccolo
             pipeline_layout_create_info.pSetLayouts    = descriptorset_layouts;
 
             if (m_rhi->createPipelineLayout(&pipeline_layout_create_info,
-                                            m_render_pipelines[_render_pipeline_type_mesh_gbuffer].layout) !=
+                                            Pipelines[_render_pipeline_type_mesh_gbuffer].layout) !=
                 RHI_SUCCESS)
             {
                 throw std::runtime_error("create mesh gbuffer pipeline layout");
@@ -1114,15 +1111,15 @@ namespace Piccolo
             pipelineInfo.pMultisampleState   = &multisample_state_create_info;
             pipelineInfo.pColorBlendState    = &color_blend_state_create_info;
             pipelineInfo.pDepthStencilState  = &depth_stencil_create_info;
-            pipelineInfo.layout              = m_render_pipelines[_render_pipeline_type_mesh_gbuffer].layout;
-            pipelineInfo.renderPass          = m_framebuffer.render_pass;
+            pipelineInfo.layout              = Pipelines[_render_pipeline_type_mesh_gbuffer].layout;
+            pipelineInfo.renderPass          = Framebuffer.render_pass;
             pipelineInfo.subpass             = E_main_camera_subpass_basepass;
             pipelineInfo.basePipelineHandle  = RHI_NULL_HANDLE;
             pipelineInfo.pDynamicState       = &dynamic_state_create_info;
 
             if (RHI_SUCCESS !=
                 m_rhi->createGraphicsPipelines(
-                    RHI_NULL_HANDLE, 1, &pipelineInfo, m_render_pipelines[_render_pipeline_type_mesh_gbuffer].pipeline))
+                    RHI_NULL_HANDLE, 1, &pipelineInfo, Pipelines[_render_pipeline_type_mesh_gbuffer].pipeline))
             {
                 throw std::runtime_error("create mesh gbuffer graphics pipeline");
             }
@@ -1144,7 +1141,7 @@ namespace Piccolo
 
             if (RHI_SUCCESS !=
                 m_rhi->createPipelineLayout(&pipeline_layout_create_info,
-                                            m_render_pipelines[_render_pipeline_type_deferred_lighting].layout))
+                                            Pipelines[_render_pipeline_type_deferred_lighting].layout))
             {
                 throw std::runtime_error("create deferred lighting pipeline layout");
             }
@@ -1258,8 +1255,8 @@ namespace Piccolo
             pipelineInfo.pMultisampleState   = &multisample_state_create_info;
             pipelineInfo.pColorBlendState    = &color_blend_state_create_info;
             pipelineInfo.pDepthStencilState  = &depth_stencil_create_info;
-            pipelineInfo.layout              = m_render_pipelines[_render_pipeline_type_deferred_lighting].layout;
-            pipelineInfo.renderPass          = m_framebuffer.render_pass;
+            pipelineInfo.layout              = Pipelines[_render_pipeline_type_deferred_lighting].layout;
+            pipelineInfo.renderPass          = Framebuffer.render_pass;
             pipelineInfo.subpass             = E_main_camera_subpass_deferred_lighting;
             pipelineInfo.basePipelineHandle  = RHI_NULL_HANDLE;
             pipelineInfo.pDynamicState       = &dynamic_state_create_info;
@@ -1268,7 +1265,7 @@ namespace Piccolo
                 m_rhi->createGraphicsPipelines(RHI_NULL_HANDLE,
                                                1,
                                                &pipelineInfo,
-                                               m_render_pipelines[_render_pipeline_type_deferred_lighting].pipeline))
+                                               Pipelines[_render_pipeline_type_deferred_lighting].pipeline))
             {
                 throw std::runtime_error("create deferred lighting graphics pipeline");
             }
@@ -1286,7 +1283,7 @@ namespace Piccolo
             pipeline_layout_create_info.pSetLayouts    = descriptorset_layouts;
 
             if (m_rhi->createPipelineLayout(&pipeline_layout_create_info,
-                                            m_render_pipelines[_render_pipeline_type_axis].layout) != RHI_SUCCESS)
+                                            Pipelines[_render_pipeline_type_axis].layout) != RHI_SUCCESS)
             {
                 throw std::runtime_error("create axis pipeline layout");
             }
@@ -1396,15 +1393,15 @@ namespace Piccolo
             pipelineInfo.pMultisampleState   = &multisample_state_create_info;
             pipelineInfo.pColorBlendState    = &color_blend_state_create_info;
             pipelineInfo.pDepthStencilState  = &depth_stencil_create_info;
-            pipelineInfo.layout              = m_render_pipelines[_render_pipeline_type_axis].layout;
-            pipelineInfo.renderPass          = m_framebuffer.render_pass;
+            pipelineInfo.layout              = Pipelines[_render_pipeline_type_axis].layout;
+            pipelineInfo.renderPass          = Framebuffer.render_pass;
             pipelineInfo.subpass             = E_main_camera_subpass_ui;
             pipelineInfo.basePipelineHandle  = RHI_NULL_HANDLE;
             pipelineInfo.pDynamicState       = &dynamic_state_create_info;
 
             if (RHI_SUCCESS !=
                 m_rhi->createGraphicsPipelines(
-                    RHI_NULL_HANDLE, 1, &pipelineInfo, m_render_pipelines[_render_pipeline_type_axis].pipeline))
+                    RHI_NULL_HANDLE, 1, &pipelineInfo, Pipelines[_render_pipeline_type_axis].pipeline))
             {
                 throw std::runtime_error("create axis graphics pipeline");
             }
@@ -1414,16 +1411,16 @@ namespace Piccolo
         }
     }
 
-    void UMainCameraPass::setupDescriptorSet()
+    void UMainCameraPass::SetupDescriptorSet()
     {
         //设置这5个pass的描述符集, 设置的是 m_descriptor_infos 数组
-        setupModelGlobalDescriptorSet();
-        setupSkyboxDescriptorSet();
-        setupAxisDescriptorSet();
-        setupGbufferLightingDescriptorSet();
+        SetupModelGlobalDescriptorSet();
+        SetupSkyboxDescriptorSet();
+        SetupAxisDescriptorSet();
+        SetupGbufferLightingDescriptorSet();
     }
 
-    void UMainCameraPass::setupModelGlobalDescriptorSet()
+    void UMainCameraPass::SetupModelGlobalDescriptorSet()
     {
         // 1. 通过描述集布局创建描述符集
         // 2. 创建描述符信息, 个数要和描述符布局一致, Info是没有插槽信息的. 插槽信息在writer里
@@ -1567,7 +1564,7 @@ namespace Piccolo
                                     nullptr);
     }
 
-    void UMainCameraPass::setupSkyboxDescriptorSet()
+    void UMainCameraPass::SetupSkyboxDescriptorSet()
     {
         RHIDescriptorSetAllocateInfo skybox_descriptor_set_alloc_info;
         skybox_descriptor_set_alloc_info.sType              = RHI_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -1617,7 +1614,7 @@ namespace Piccolo
         m_rhi->updateDescriptorSets(2, skybox_descriptor_writes_info, 0, NULL);
     }
 
-    void UMainCameraPass::setupAxisDescriptorSet()
+    void UMainCameraPass::SetupAxisDescriptorSet()
     {
         RHIDescriptorSetAllocateInfo axis_descriptor_set_alloc_info;
         axis_descriptor_set_alloc_info.sType              = RHI_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -1671,7 +1668,7 @@ namespace Piccolo
             NULL);
     }
 
-    void UMainCameraPass::setupGbufferLightingDescriptorSet()
+    void UMainCameraPass::SetupGbufferLightingDescriptorSet()
     {
         RHIDescriptorSetAllocateInfo gbuffer_light_global_descriptor_set_alloc_info;
         gbuffer_light_global_descriptor_set_alloc_info.sType          = RHI_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -1691,26 +1688,26 @@ namespace Piccolo
         // 4个write都写的是上面同一个descriptor_set
     }
 
-    void UMainCameraPass::setupFramebufferDescriptorSet()
+    void UMainCameraPass::SetupFramebufferDescriptorSet()
     {
         // 4个Image附件 = 3个GBuffer, 1个DepthView
 
         RHIDescriptorImageInfo gbuffer_normal_input_attachment_info = {};
         gbuffer_normal_input_attachment_info.sampler     = m_rhi->getOrCreateDefaultSampler(Default_Sampler_Nearest);
-        gbuffer_normal_input_attachment_info.imageView   = m_framebuffer.attachments[E_main_camera_pass_gbuffer_a].view;
+        gbuffer_normal_input_attachment_info.imageView   = Framebuffer.attachments[E_main_camera_pass_gbuffer_a].view;
         gbuffer_normal_input_attachment_info.imageLayout = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
         RHIDescriptorImageInfo gbuffer_metallic_roughness_shadingmodeid_input_attachment_info = {};
         gbuffer_metallic_roughness_shadingmodeid_input_attachment_info.sampler =
             m_rhi->getOrCreateDefaultSampler(Default_Sampler_Nearest);
         gbuffer_metallic_roughness_shadingmodeid_input_attachment_info.imageView =
-            m_framebuffer.attachments[E_main_camera_pass_gbuffer_b].view;
+            Framebuffer.attachments[E_main_camera_pass_gbuffer_b].view;
         gbuffer_metallic_roughness_shadingmodeid_input_attachment_info.imageLayout =
             RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
         RHIDescriptorImageInfo gbuffer_albedo_input_attachment_info = {};
         gbuffer_albedo_input_attachment_info.sampler     = m_rhi->getOrCreateDefaultSampler(Default_Sampler_Nearest);
-        gbuffer_albedo_input_attachment_info.imageView   = m_framebuffer.attachments[E_main_camera_pass_gbuffer_c].view;
+        gbuffer_albedo_input_attachment_info.imageView   = Framebuffer.attachments[E_main_camera_pass_gbuffer_c].view;
         gbuffer_albedo_input_attachment_info.imageLayout = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
         RHIDescriptorImageInfo depth_input_attachment_info = {};
@@ -1779,7 +1776,7 @@ namespace Piccolo
     }
 
     
-    void UMainCameraPass::setupSwapchainFramebuffers()
+    void UMainCameraPass::SetupSwapchainFramebuffers()
     {
         m_swapchain_framebuffers.resize(m_rhi->getSwapchainInfo().imageViews.size());
 
@@ -1789,20 +1786,20 @@ namespace Piccolo
         for (size_t i = 0; i < m_rhi->getSwapchainInfo().imageViews.size(); i++)
         {
             RHIImageView* framebuffer_attachments_for_image_view[E_main_camera_pass_attachment_count] = {
-                m_framebuffer.attachments[E_main_camera_pass_gbuffer_a].view,
-                m_framebuffer.attachments[E_main_camera_pass_gbuffer_b].view,
-                m_framebuffer.attachments[E_main_camera_pass_gbuffer_c].view,
-                m_framebuffer.attachments[E_main_camera_pass_backup_buffer_odd].view,
-                m_framebuffer.attachments[E_main_camera_pass_backup_buffer_even].view,
-                m_framebuffer.attachments[E_main_camera_pass_post_process_buffer_odd].view,
-                m_framebuffer.attachments[E_main_camera_pass_post_process_buffer_even].view,
+                Framebuffer.attachments[E_main_camera_pass_gbuffer_a].view,
+                Framebuffer.attachments[E_main_camera_pass_gbuffer_b].view,
+                Framebuffer.attachments[E_main_camera_pass_gbuffer_c].view,
+                Framebuffer.attachments[E_main_camera_pass_backup_buffer_odd].view,
+                Framebuffer.attachments[E_main_camera_pass_backup_buffer_even].view,
+                Framebuffer.attachments[E_main_camera_pass_post_process_buffer_odd].view,
+                Framebuffer.attachments[E_main_camera_pass_post_process_buffer_even].view,
                 m_rhi->getDepthImageInfo().depth_image_view,
                 m_rhi->getSwapchainInfo().imageViews[i]};
 
             RHIFramebufferCreateInfo framebuffer_create_info {};
             framebuffer_create_info.sType      = RHI_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
             framebuffer_create_info.flags      = 0U;
-            framebuffer_create_info.renderPass = m_framebuffer.render_pass;
+            framebuffer_create_info.renderPass = Framebuffer.render_pass;
             //直接就是9不行?
             framebuffer_create_info.attachmentCount =
                 (sizeof(framebuffer_attachments_for_image_view) / sizeof(framebuffer_attachments_for_image_view[0]));
@@ -1822,23 +1819,21 @@ namespace Piccolo
 
     void UMainCameraPass::updateAfterFramebufferRecreate()
     {
-        for (size_t i = 0; i < m_framebuffer.attachments.size(); i++)
+        for (auto& attachment : Framebuffer.attachments)
         {
-            m_rhi->destroyImage(m_framebuffer.attachments[i].image);
-            m_rhi->destroyImageView(m_framebuffer.attachments[i].view);
-            m_rhi->freeMemory(m_framebuffer.attachments[i].mem);
+            m_rhi->destroyImage(attachment.image);
+            m_rhi->destroyImageView(attachment.view);
+            m_rhi->freeMemory(attachment.mem);
         }
 
-        for (auto framebuffer : m_swapchain_framebuffers)
+        for (auto* framebuffer : m_swapchain_framebuffers)
         {
             m_rhi->destroyFramebuffer(framebuffer);
         }
 
-        setupAttachments();
-
-        setupFramebufferDescriptorSet();
-
-        setupSwapchainFramebuffers();
+        SetupAttachments();
+        SetupFramebufferDescriptorSet();
+        SetupSwapchainFramebuffers();
     }
 
     void UMainCameraPass::draw(ColorGradingPass& color_grading_pass,
@@ -1851,7 +1846,7 @@ namespace Piccolo
         {
             RHIRenderPassBeginInfo renderpass_begin_info {};
             renderpass_begin_info.sType             = RHI_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderpass_begin_info.renderPass        = m_framebuffer.render_pass;
+            renderpass_begin_info.renderPass        = Framebuffer.render_pass;
             renderpass_begin_info.framebuffer       = m_swapchain_framebuffers[current_swapchain_image_index];
             renderpass_begin_info.renderArea.offset = {0, 0};
             renderpass_begin_info.renderArea.extent = m_rhi->getSwapchainInfo().extent;
@@ -1879,7 +1874,7 @@ namespace Piccolo
         // subpass 1
         m_rhi->pushEvent(m_rhi->getCurrentCommandBuffer(), "BasePass", color);
         //将几何信息存到GBuffer中
-        drawMeshGbuffer();
+        DrawMeshGbuffer();
         m_rhi->popEvent(m_rhi->getCurrentCommandBuffer());
 
         // subpass 2
@@ -1887,7 +1882,7 @@ namespace Piccolo
         m_rhi->pushEvent(m_rhi->getCurrentCommandBuffer(), "Deferred Lighting", color);
         // DeffereLighting SubPass
         // 利用GBuffer中缓存的信息进行光照计算
-        drawDeferredLighting();
+        DrawDeferredLighting();
         m_rhi->popEvent(m_rhi->getCurrentCommandBuffer());
 
         // subpass 3
@@ -1942,7 +1937,7 @@ namespace Piccolo
         m_rhi->cmdEndRenderPassPFN(m_rhi->getCurrentCommandBuffer());
     }
 
-    void UMainCameraPass::drawMeshGbuffer()
+    void UMainCameraPass::DrawMeshGbuffer()
     {
         struct MeshNode
         {
@@ -1981,7 +1976,7 @@ namespace Piccolo
         // gbuffer的pipeline
         m_rhi->cmdBindPipelinePFN(m_rhi->getCurrentCommandBuffer(),
                                   RHI_PIPELINE_BIND_POINT_GRAPHICS,
-                                  m_render_pipelines[_render_pipeline_type_mesh_gbuffer].pipeline);
+                                  Pipelines[_render_pipeline_type_mesh_gbuffer].pipeline);
         m_rhi->cmdSetViewportPFN(m_rhi->getCurrentCommandBuffer(), 0, 1, m_rhi->getSwapchainInfo().viewport);
         m_rhi->cmdSetScissorPFN(m_rhi->getCurrentCommandBuffer(), 0, 1, m_rhi->getSwapchainInfo().scissor);
 
@@ -2010,7 +2005,7 @@ namespace Piccolo
             // bind per material
             m_rhi->cmdBindDescriptorSetsPFN(m_rhi->getCurrentCommandBuffer(),
                                             RHI_PIPELINE_BIND_POINT_GRAPHICS,
-                                            m_render_pipelines[_render_pipeline_type_mesh_gbuffer].layout,
+                                            Pipelines[_render_pipeline_type_mesh_gbuffer].layout,
                                             2,
                                             1,
                                             &material.material_descriptor_set,
@@ -2030,7 +2025,7 @@ namespace Piccolo
                     // bind per mesh
                     m_rhi->cmdBindDescriptorSetsPFN(m_rhi->getCurrentCommandBuffer(),
                                                     RHI_PIPELINE_BIND_POINT_GRAPHICS,
-                                                    m_render_pipelines[_render_pipeline_type_mesh_gbuffer].layout,
+                                                    Pipelines[_render_pipeline_type_mesh_gbuffer].layout,
                                                     1,
                                                     1,
                                                     &mesh.mesh_vertex_blending_descriptor_set,
@@ -2153,7 +2148,7 @@ namespace Piccolo
                                                        per_drawcall_vertex_blending_dynamic_offset};
                         m_rhi->cmdBindDescriptorSetsPFN(m_rhi->getCurrentCommandBuffer(),
                                                         RHI_PIPELINE_BIND_POINT_GRAPHICS,
-                                                        m_render_pipelines[_render_pipeline_type_mesh_gbuffer].layout,
+                                                        Pipelines[_render_pipeline_type_mesh_gbuffer].layout,
                                                         0,
                                                         1,
                                                         &m_descriptor_infos[_mesh_global].descriptor_set,
@@ -2170,11 +2165,11 @@ namespace Piccolo
         m_rhi->popEvent(m_rhi->getCurrentCommandBuffer());
     }
 
-    void UMainCameraPass::drawDeferredLighting()
+    void UMainCameraPass::DrawDeferredLighting()
     {
         m_rhi->cmdBindPipelinePFN(m_rhi->getCurrentCommandBuffer(),
                                   RHI_PIPELINE_BIND_POINT_GRAPHICS,
-                                  m_render_pipelines[_render_pipeline_type_deferred_lighting].pipeline);
+                                  Pipelines[_render_pipeline_type_deferred_lighting].pipeline);
 
         m_rhi->cmdSetViewportPFN(m_rhi->getCurrentCommandBuffer(), 0, 1, m_rhi->getSwapchainInfo().viewport);
         m_rhi->cmdSetScissorPFN(m_rhi->getCurrentCommandBuffer(), 0, 1, m_rhi->getSwapchainInfo().scissor);
@@ -2201,7 +2196,7 @@ namespace Piccolo
         uint32_t          dynamic_offsets[4] = {perframe_dynamic_offset, perframe_dynamic_offset, 0, 0};
         m_rhi->cmdBindDescriptorSetsPFN(m_rhi->getCurrentCommandBuffer(),
                                         RHI_PIPELINE_BIND_POINT_GRAPHICS,
-                                        m_render_pipelines[_render_pipeline_type_deferred_lighting].layout,
+                                        Pipelines[_render_pipeline_type_deferred_lighting].layout,
                                         0,
                                         3,
                                         descriptor_sets,
@@ -2209,265 +2204,6 @@ namespace Piccolo
                                         dynamic_offsets);
 
         m_rhi->cmdDraw(m_rhi->getCurrentCommandBuffer(), 3, 1, 0, 0);
-    }
-
-    void UMainCameraPass::drawMeshLighting()
-    {
-        struct MeshNode
-        {
-            const Matrix4x4* model_matrix {nullptr};
-            const Matrix4x4* joint_matrices {nullptr};
-            uint32_t         joint_count {0};
-        };
-
-        std::map<VulkanPBRMaterial*, std::map<VulkanMesh*, std::vector<MeshNode>>> main_camera_mesh_drawcall_batch;
-
-        // reorganize mesh
-        for (RenderMeshNode& node : *(m_visiable_nodes.p_main_camera_visible_mesh_nodes))
-        {
-            auto& mesh_instanced = main_camera_mesh_drawcall_batch[node.ref_material];
-            auto& mesh_nodes     = mesh_instanced[node.ref_mesh];
-
-            MeshNode temp;
-            temp.model_matrix = node.model_matrix;
-            if (node.enable_vertex_blending)
-            {
-                temp.joint_matrices = node.joint_matrices;
-                temp.joint_count    = node.joint_count;
-            }
-
-            mesh_nodes.push_back(temp);
-        }
-
-        float color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-        m_rhi->pushEvent(m_rhi->getCurrentCommandBuffer(), "Model", color);
-
-        m_rhi->cmdBindPipelinePFN(m_rhi->getCurrentCommandBuffer(),
-                                  RHI_PIPELINE_BIND_POINT_GRAPHICS,
-                                  m_render_pipelines[_render_pipeline_type_mesh_lighting].pipeline);
-        m_rhi->cmdSetViewportPFN(m_rhi->getCurrentCommandBuffer(), 0, 1, m_rhi->getSwapchainInfo().viewport);
-        m_rhi->cmdSetScissorPFN(m_rhi->getCurrentCommandBuffer(), 0, 1, m_rhi->getSwapchainInfo().scissor);
-
-        // perframe storage buffer
-        uint32_t perframe_dynamic_offset = roundUp(
-            m_global_render_resource->_storage_buffer._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()],
-            m_global_render_resource->_storage_buffer._min_storage_buffer_offset_alignment);
-
-        m_global_render_resource->_storage_buffer._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()] =
-            perframe_dynamic_offset + sizeof(MeshPerframeStorageBufferObject);
-        assert(
-            m_global_render_resource->_storage_buffer._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()] <=
-            (m_global_render_resource->_storage_buffer._global_upload_ringbuffers_begin[m_rhi->getCurrentFrameIndex()] +
-             m_global_render_resource->_storage_buffer._global_upload_ringbuffers_size[m_rhi->getCurrentFrameIndex()]));
-
-        (*reinterpret_cast<MeshPerframeStorageBufferObject*>(
-            reinterpret_cast<uintptr_t>(
-                m_global_render_resource->_storage_buffer._global_upload_ringbuffer_memory_pointer) +
-            perframe_dynamic_offset)) = m_mesh_perframe_storage_buffer_object;
-
-        for (auto& pair1 : main_camera_mesh_drawcall_batch)
-        {
-            VulkanPBRMaterial& material       = (*pair1.first);
-            auto&              mesh_instanced = pair1.second;
-
-            // bind per material
-            m_rhi->cmdBindDescriptorSetsPFN(m_rhi->getCurrentCommandBuffer(),
-                                            RHI_PIPELINE_BIND_POINT_GRAPHICS,
-                                            m_render_pipelines[_render_pipeline_type_mesh_lighting].layout,
-                                            2,
-                                            1,
-                                            &material.material_descriptor_set,
-                                            0,
-                                            NULL);
-
-            // TODO: render from near to far
-
-            for (auto& pair2 : mesh_instanced)
-            {
-                VulkanMesh& mesh       = (*pair2.first);
-                auto&       mesh_nodes = pair2.second;
-
-                uint32_t total_instance_count = static_cast<uint32_t>(mesh_nodes.size());
-                if (total_instance_count > 0)
-                {
-                    // bind per mesh
-                    m_rhi->cmdBindDescriptorSetsPFN(m_rhi->getCurrentCommandBuffer(),
-                                                    RHI_PIPELINE_BIND_POINT_GRAPHICS,
-                                                    m_render_pipelines[_render_pipeline_type_mesh_lighting].layout,
-                                                    1,
-                                                    1,
-                                                    &mesh.mesh_vertex_blending_descriptor_set,
-                                                    0,
-                                                    NULL);
-
-                    RHIBuffer*    vertex_buffers[3] = {mesh.mesh_vertex_position_buffer,
-                                                    mesh.mesh_vertex_varying_enable_blending_buffer,
-                                                    mesh.mesh_vertex_varying_buffer};
-                    RHIDeviceSize offsets[]         = {0, 0, 0};
-                    m_rhi->cmdBindVertexBuffersPFN(m_rhi->getCurrentCommandBuffer(),
-                                                   0,
-                                                   (sizeof(vertex_buffers) / sizeof(vertex_buffers[0])),
-                                                   vertex_buffers,
-                                                   offsets);
-                    m_rhi->cmdBindIndexBufferPFN(
-                        m_rhi->getCurrentCommandBuffer(), mesh.mesh_index_buffer, 0, RHI_INDEX_TYPE_UINT16);
-
-                    uint32_t drawcall_max_instance_count =
-                        (sizeof(MeshPerdrawcallStorageBufferObject::mesh_instances) /
-                         sizeof(MeshPerdrawcallStorageBufferObject::mesh_instances[0]));
-                    uint32_t drawcall_count =
-                        roundUp(total_instance_count, drawcall_max_instance_count) / drawcall_max_instance_count;
-
-                    for (uint32_t drawcall_index = 0; drawcall_index < drawcall_count; ++drawcall_index)
-                    {
-                        uint32_t current_instance_count =
-                            ((total_instance_count - drawcall_max_instance_count * drawcall_index) <
-                             drawcall_max_instance_count) ?
-                                (total_instance_count - drawcall_max_instance_count * drawcall_index) :
-                                drawcall_max_instance_count;
-
-                        // per drawcall storage buffer
-                        uint32_t perdrawcall_dynamic_offset =
-                            roundUp(m_global_render_resource->_storage_buffer
-                                        ._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()],
-                                    m_global_render_resource->_storage_buffer._min_storage_buffer_offset_alignment);
-                        m_global_render_resource->_storage_buffer
-                            ._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()] =
-                            perdrawcall_dynamic_offset + sizeof(MeshPerdrawcallStorageBufferObject);
-                        assert(m_global_render_resource->_storage_buffer
-                                   ._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()] <=
-                               (m_global_render_resource->_storage_buffer
-                                    ._global_upload_ringbuffers_begin[m_rhi->getCurrentFrameIndex()] +
-                                m_global_render_resource->_storage_buffer
-                                    ._global_upload_ringbuffers_size[m_rhi->getCurrentFrameIndex()]));
-
-                        MeshPerdrawcallStorageBufferObject& perdrawcall_storage_buffer_object =
-                            (*reinterpret_cast<MeshPerdrawcallStorageBufferObject*>(
-                                reinterpret_cast<uintptr_t>(m_global_render_resource->_storage_buffer
-                                                                ._global_upload_ringbuffer_memory_pointer) +
-                                perdrawcall_dynamic_offset));
-                        for (uint32_t i = 0; i < current_instance_count; ++i)
-                        {
-                            perdrawcall_storage_buffer_object.mesh_instances[i].model_matrix =
-                                *mesh_nodes[drawcall_max_instance_count * drawcall_index + i].model_matrix;
-                            perdrawcall_storage_buffer_object.mesh_instances[i].enable_vertex_blending =
-                                mesh_nodes[drawcall_max_instance_count * drawcall_index + i].joint_matrices ? 1.0 :
-                                                                                                              -1.0;
-                        }
-
-                        // per drawcall vertex blending storage buffer
-                        uint32_t per_drawcall_vertex_blending_dynamic_offset;
-                        bool     least_one_enable_vertex_blending = true;
-                        for (uint32_t i = 0; i < current_instance_count; ++i)
-                        {
-                            if (!mesh_nodes[drawcall_max_instance_count * drawcall_index + i].joint_matrices)
-                            {
-                                least_one_enable_vertex_blending = false;
-                                break;
-                            }
-                        }
-                        if (least_one_enable_vertex_blending)
-                        {
-                            per_drawcall_vertex_blending_dynamic_offset =
-                                roundUp(m_global_render_resource->_storage_buffer
-                                            ._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()],
-                                        m_global_render_resource->_storage_buffer._min_storage_buffer_offset_alignment);
-                            m_global_render_resource->_storage_buffer
-                                ._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()] =
-                                per_drawcall_vertex_blending_dynamic_offset +
-                                sizeof(MeshPerdrawcallVertexBlendingStorageBufferObject);
-                            assert(m_global_render_resource->_storage_buffer
-                                       ._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()] <=
-                                   (m_global_render_resource->_storage_buffer
-                                        ._global_upload_ringbuffers_begin[m_rhi->getCurrentFrameIndex()] +
-                                    m_global_render_resource->_storage_buffer
-                                        ._global_upload_ringbuffers_size[m_rhi->getCurrentFrameIndex()]));
-
-                            MeshPerdrawcallVertexBlendingStorageBufferObject&
-                                per_drawcall_vertex_blending_storage_buffer_object =
-                                    (*reinterpret_cast<MeshPerdrawcallVertexBlendingStorageBufferObject*>(
-                                        reinterpret_cast<uintptr_t>(m_global_render_resource->_storage_buffer
-                                                                        ._global_upload_ringbuffer_memory_pointer) +
-                                        per_drawcall_vertex_blending_dynamic_offset));
-                            for (uint32_t i = 0; i < current_instance_count; ++i)
-                            {
-                                if (mesh_nodes[drawcall_max_instance_count * drawcall_index + i].joint_matrices)
-                                {
-                                    for (uint32_t j = 0;
-                                         j < mesh_nodes[drawcall_max_instance_count * drawcall_index + i].joint_count;
-                                         ++j)
-                                    {
-                                        per_drawcall_vertex_blending_storage_buffer_object
-                                            .joint_matrices[s_mesh_vertex_blending_max_joint_count * i + j] =
-                                            mesh_nodes[drawcall_max_instance_count * drawcall_index + i]
-                                                .joint_matrices[j];
-                                    }
-                                }
-                            }
-                        }
-                        else
-                        {
-                            per_drawcall_vertex_blending_dynamic_offset = 0;
-                        }
-
-                        // bind perdrawcall
-                        uint32_t dynamic_offsets[3] = {perframe_dynamic_offset,
-                                                       perdrawcall_dynamic_offset,
-                                                       per_drawcall_vertex_blending_dynamic_offset};
-                        m_rhi->cmdBindDescriptorSetsPFN(m_rhi->getCurrentCommandBuffer(),
-                                                        RHI_PIPELINE_BIND_POINT_GRAPHICS,
-                                                        m_render_pipelines[_render_pipeline_type_mesh_lighting].layout,
-                                                        0,
-                                                        1,
-                                                        &m_descriptor_infos[_mesh_global].descriptor_set,
-                                                        3,
-                                                        dynamic_offsets);
-
-                        m_rhi->cmdDrawIndexedPFN(
-                            m_rhi->getCurrentCommandBuffer(), mesh.mesh_index_count, current_instance_count, 0, 0, 0);
-                    }
-                }
-            }
-        }
-
-        m_rhi->popEvent(m_rhi->getCurrentCommandBuffer());
-    }
-
-    void UMainCameraPass::drawSkybox()
-    {
-        uint32_t perframe_dynamic_offset = roundUp(
-            m_global_render_resource->_storage_buffer._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()],
-            m_global_render_resource->_storage_buffer._min_storage_buffer_offset_alignment);
-
-        m_global_render_resource->_storage_buffer._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()] =
-            perframe_dynamic_offset + sizeof(MeshPerframeStorageBufferObject);
-        assert(
-            m_global_render_resource->_storage_buffer._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()] <=
-            (m_global_render_resource->_storage_buffer._global_upload_ringbuffers_begin[m_rhi->getCurrentFrameIndex()] +
-             m_global_render_resource->_storage_buffer._global_upload_ringbuffers_size[m_rhi->getCurrentFrameIndex()]));
-
-        (*reinterpret_cast<MeshPerframeStorageBufferObject*>(
-            reinterpret_cast<uintptr_t>(
-                m_global_render_resource->_storage_buffer._global_upload_ringbuffer_memory_pointer) +
-            perframe_dynamic_offset)) = m_mesh_perframe_storage_buffer_object;
-
-        float color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-        m_rhi->pushEvent(m_rhi->getCurrentCommandBuffer(), "Skybox", color);
-
-        m_rhi->cmdBindPipelinePFN(m_rhi->getCurrentCommandBuffer(),
-                                  RHI_PIPELINE_BIND_POINT_GRAPHICS,
-                                  m_render_pipelines[_render_pipeline_type_skybox].pipeline);
-        m_rhi->cmdBindDescriptorSetsPFN(m_rhi->getCurrentCommandBuffer(),
-                                        RHI_PIPELINE_BIND_POINT_GRAPHICS,
-                                        m_render_pipelines[_render_pipeline_type_skybox].layout,
-                                        0,
-                                        1,
-                                        &m_descriptor_infos[_skybox].descriptor_set,
-                                        1,
-                                        &perframe_dynamic_offset);
-        m_rhi->cmdDraw(m_rhi->getCurrentCommandBuffer(), 36, 1, 0, 0); // 2 triangles(6 vertex) each face, 6 faces
-
-        m_rhi->popEvent(m_rhi->getCurrentCommandBuffer());
     }
 
     void UMainCameraPass::drawAxis()
@@ -2496,12 +2232,12 @@ namespace Piccolo
 
         m_rhi->cmdBindPipelinePFN(m_rhi->getCurrentCommandBuffer(),
                                   RHI_PIPELINE_BIND_POINT_GRAPHICS,
-                                  m_render_pipelines[_render_pipeline_type_axis].pipeline);
+                                  Pipelines[_render_pipeline_type_axis].pipeline);
         m_rhi->cmdSetViewportPFN(m_rhi->getCurrentCommandBuffer(), 0, 1, m_rhi->getSwapchainInfo().viewport);
         m_rhi->cmdSetScissorPFN(m_rhi->getCurrentCommandBuffer(), 0, 1, m_rhi->getSwapchainInfo().scissor);
         m_rhi->cmdBindDescriptorSetsPFN(m_rhi->getCurrentCommandBuffer(),
                                         RHI_PIPELINE_BIND_POINT_GRAPHICS,
-                                        m_render_pipelines[_render_pipeline_type_axis].layout,
+                                        Pipelines[_render_pipeline_type_axis].layout,
                                         0,
                                         1,
                                         &m_descriptor_infos[_axis].descriptor_set,

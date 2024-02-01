@@ -104,9 +104,9 @@ namespace Piccolo
         //这个pass的用到的shader的布局信息
         std::vector<FDescriptor>         m_descriptor_infos;
         // 4个渲染管线? 忘记啥意思了. 一个subpass对应一个pipeline?
-        std::vector<FRenderPipelineBase> m_render_pipelines;
+        std::vector<FRenderPipelineBase> Pipelines;
         //此渲染pass输出的framebuffer
-        FFramebuffer                     m_framebuffer;
+        FFramebuffer                     Framebuffer;
 
         void initialize(const FRenderPassInitInfo* init_info) override;
         void postInitialize() override;

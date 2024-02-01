@@ -50,56 +50,56 @@ namespace Piccolo
     void PointLightShadowPass::setupAttachments()
     {
         // color and depth
-        m_framebuffer.attachments.resize(2);
+        Framebuffer.attachments.resize(2);
 
         // color
-        m_framebuffer.attachments[0].format = RHI_FORMAT_R32_SFLOAT;
+        Framebuffer.attachments[0].format = RHI_FORMAT_R32_SFLOAT;
         m_rhi->createImage(s_point_light_shadow_map_dimension,
                            s_point_light_shadow_map_dimension,
-                           m_framebuffer.attachments[0].format,
+                           Framebuffer.attachments[0].format,
                            RHI_IMAGE_TILING_OPTIMAL,
                            RHI_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | RHI_IMAGE_USAGE_SAMPLED_BIT,
                            RHI_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                           m_framebuffer.attachments[0].image,
-                           m_framebuffer.attachments[0].mem,
+                           Framebuffer.attachments[0].image,
+                           Framebuffer.attachments[0].mem,
                            0,
                            2 * s_max_point_light_count,
                            1);
-        m_rhi->createImageView(m_framebuffer.attachments[0].image,
-                               m_framebuffer.attachments[0].format,
+        m_rhi->createImageView(Framebuffer.attachments[0].image,
+                               Framebuffer.attachments[0].format,
                                RHI_IMAGE_ASPECT_COLOR_BIT,
                                RHI_IMAGE_VIEW_TYPE_2D_ARRAY,
                                2 * s_max_point_light_count,
                                1,
-                               m_framebuffer.attachments[0].view);
+                               Framebuffer.attachments[0].view);
 
         // depth
-        m_framebuffer.attachments[1].format = m_rhi->getDepthImageInfo().depth_image_format;
+        Framebuffer.attachments[1].format = m_rhi->getDepthImageInfo().depth_image_format;
         m_rhi->createImage(s_point_light_shadow_map_dimension,
                            s_point_light_shadow_map_dimension,
-                           m_framebuffer.attachments[1].format,
+                           Framebuffer.attachments[1].format,
                            RHI_IMAGE_TILING_OPTIMAL,
                            RHI_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | RHI_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT,
                            RHI_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                           m_framebuffer.attachments[1].image,
-                           m_framebuffer.attachments[1].mem,
+                           Framebuffer.attachments[1].image,
+                           Framebuffer.attachments[1].mem,
                            0,
                            2 * s_max_point_light_count,
                            1);
-        m_rhi->createImageView(m_framebuffer.attachments[1].image,
-                               m_framebuffer.attachments[1].format,
+        m_rhi->createImageView(Framebuffer.attachments[1].image,
+                               Framebuffer.attachments[1].format,
                                RHI_IMAGE_ASPECT_DEPTH_BIT,
                                RHI_IMAGE_VIEW_TYPE_2D_ARRAY,
                                2 * s_max_point_light_count,
                                1,
-                               m_framebuffer.attachments[1].view);
+                               Framebuffer.attachments[1].view);
     }
     void PointLightShadowPass::setupRenderPass()
     {
         RHIAttachmentDescription attachments[2] = {};
 
         RHIAttachmentDescription& point_light_shadow_color_attachment_description = attachments[0];
-        point_light_shadow_color_attachment_description.format                    = m_framebuffer.attachments[0].format;
+        point_light_shadow_color_attachment_description.format                    = Framebuffer.attachments[0].format;
         point_light_shadow_color_attachment_description.samples                   = RHI_SAMPLE_COUNT_1_BIT;
         point_light_shadow_color_attachment_description.loadOp                    = RHI_ATTACHMENT_LOAD_OP_CLEAR;
         point_light_shadow_color_attachment_description.storeOp                   = RHI_ATTACHMENT_STORE_OP_STORE;
@@ -109,7 +109,7 @@ namespace Piccolo
         point_light_shadow_color_attachment_description.finalLayout               = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
         RHIAttachmentDescription& point_light_shadow_depth_attachment_description = attachments[1];
-        point_light_shadow_depth_attachment_description.format                    = m_framebuffer.attachments[1].format;
+        point_light_shadow_depth_attachment_description.format                    = Framebuffer.attachments[1].format;
         point_light_shadow_depth_attachment_description.samples                   = RHI_SAMPLE_COUNT_1_BIT;
         point_light_shadow_depth_attachment_description.loadOp                    = RHI_ATTACHMENT_LOAD_OP_CLEAR;
         point_light_shadow_depth_attachment_description.storeOp                   = RHI_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -154,26 +154,26 @@ namespace Piccolo
         renderpass_create_info.dependencyCount = (sizeof(dependencies) / sizeof(dependencies[0]));
         renderpass_create_info.pDependencies   = dependencies;
 
-        if (m_rhi->createRenderPass(&renderpass_create_info, m_framebuffer.render_pass) != RHI_SUCCESS)
+        if (m_rhi->createRenderPass(&renderpass_create_info, Framebuffer.render_pass) != RHI_SUCCESS)
         {
             throw std::runtime_error("create point light shadow render pass");
         }
     }
     void PointLightShadowPass::setupFramebuffer()
     {
-        RHIImageView* attachments[2] = {m_framebuffer.attachments[0].view, m_framebuffer.attachments[1].view};
+        RHIImageView* attachments[2] = {Framebuffer.attachments[0].view, Framebuffer.attachments[1].view};
 
         RHIFramebufferCreateInfo framebuffer_create_info {};
         framebuffer_create_info.sType           = RHI_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         framebuffer_create_info.flags           = 0U;
-        framebuffer_create_info.renderPass      = m_framebuffer.render_pass;
+        framebuffer_create_info.renderPass      = Framebuffer.render_pass;
         framebuffer_create_info.attachmentCount = (sizeof(attachments) / sizeof(attachments[0]));
         framebuffer_create_info.pAttachments    = attachments;
         framebuffer_create_info.width           = s_point_light_shadow_map_dimension;
         framebuffer_create_info.height          = s_point_light_shadow_map_dimension;
         framebuffer_create_info.layers          = 2 * s_max_point_light_count;
 
-        if (m_rhi->createFramebuffer(&framebuffer_create_info, m_framebuffer.framebuffer) != RHI_SUCCESS)
+        if (m_rhi->createFramebuffer(&framebuffer_create_info, Framebuffer.framebuffer) != RHI_SUCCESS)
         {
             throw std::runtime_error("create point light shadow framebuffer");
         }
@@ -231,7 +231,7 @@ namespace Piccolo
         if (!m_rhi->isPointLightShadowEnabled())
             return;
 
-        m_render_pipelines.resize(1);
+        Pipelines.resize(1);
 
         RHIDescriptorSetLayout*     descriptorset_layouts[] = {m_descriptor_infos[0].layout, m_per_mesh_layout};
         RHIPipelineLayoutCreateInfo pipeline_layout_create_info {};
@@ -239,7 +239,7 @@ namespace Piccolo
         pipeline_layout_create_info.setLayoutCount = (sizeof(descriptorset_layouts) / sizeof(descriptorset_layouts[0]));
         pipeline_layout_create_info.pSetLayouts    = descriptorset_layouts;
 
-        if (m_rhi->createPipelineLayout( &pipeline_layout_create_info, m_render_pipelines[0].layout) != RHI_SUCCESS)
+        if (m_rhi->createPipelineLayout( &pipeline_layout_create_info, Pipelines[0].layout) != RHI_SUCCESS)
         {
             throw std::runtime_error("create mesh point light shadow pipeline layout");
         }
@@ -362,13 +362,13 @@ namespace Piccolo
         pipelineInfo.pMultisampleState   = &multisample_state_create_info;
         pipelineInfo.pColorBlendState    = &color_blend_state_create_info;
         pipelineInfo.pDepthStencilState  = &depth_stencil_create_info;
-        pipelineInfo.layout              = m_render_pipelines[0].layout;
-        pipelineInfo.renderPass          = m_framebuffer.render_pass;
+        pipelineInfo.layout              = Pipelines[0].layout;
+        pipelineInfo.renderPass          = Framebuffer.render_pass;
         pipelineInfo.subpass             = 0;
         pipelineInfo.basePipelineHandle  = RHI_NULL_HANDLE;
         pipelineInfo.pDynamicState       = &dynamic_state_create_info;
 
-        if (m_rhi->createGraphicsPipelines(RHI_NULL_HANDLE, 1, &pipelineInfo, m_render_pipelines[0].pipeline) != RHI_SUCCESS)
+        if (m_rhi->createGraphicsPipelines(RHI_NULL_HANDLE, 1, &pipelineInfo, Pipelines[0].pipeline) != RHI_SUCCESS)
         {
             throw std::runtime_error("create mesh point light shadow graphics pipeline");
         }
@@ -497,8 +497,8 @@ namespace Piccolo
 
         RHIRenderPassBeginInfo renderpass_begin_info {};
         renderpass_begin_info.sType             = RHI_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderpass_begin_info.renderPass        = m_framebuffer.render_pass;
-        renderpass_begin_info.framebuffer       = m_framebuffer.framebuffer;
+        renderpass_begin_info.renderPass        = Framebuffer.render_pass;
+        renderpass_begin_info.framebuffer       = Framebuffer.framebuffer;
         renderpass_begin_info.renderArea.offset = {0, 0};
         renderpass_begin_info.renderArea.extent = {s_point_light_shadow_map_dimension,
                                                    s_point_light_shadow_map_dimension};
@@ -517,7 +517,7 @@ namespace Piccolo
             m_rhi->pushEvent(m_rhi->getCurrentCommandBuffer(), "Mesh", color);
 
             m_rhi->cmdBindPipelinePFN(
-                m_rhi->getCurrentCommandBuffer(), RHI_PIPELINE_BIND_POINT_GRAPHICS, m_render_pipelines[0].pipeline);
+                m_rhi->getCurrentCommandBuffer(), RHI_PIPELINE_BIND_POINT_GRAPHICS, Pipelines[0].pipeline);
 
             // perframe storage buffer
             uint32_t perframe_dynamic_offset =
@@ -556,7 +556,7 @@ namespace Piccolo
                         // bind per mesh
                         m_rhi->cmdBindDescriptorSetsPFN(m_rhi->getCurrentCommandBuffer(),
                                                         RHI_PIPELINE_BIND_POINT_GRAPHICS,
-                                                        m_render_pipelines[0].layout,
+                                                        Pipelines[0].layout,
                                                         1,
                                                         1,
                                                         &mesh.mesh_vertex_blending_descriptor_set,
@@ -675,7 +675,7 @@ namespace Piccolo
                                                            per_drawcall_vertex_blending_dynamic_offset};
                             m_rhi->cmdBindDescriptorSetsPFN(m_rhi->getCurrentCommandBuffer(),
                                                             RHI_PIPELINE_BIND_POINT_GRAPHICS,
-                                                            m_render_pipelines[0].layout,
+                                                            Pipelines[0].layout,
                                                             0,
                                                             1,
                                                             &m_descriptor_infos[0].descriptor_set,

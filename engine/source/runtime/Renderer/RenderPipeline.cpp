@@ -47,7 +47,7 @@ namespace Piccolo
         main_camera_pass->m_point_light_shadow_color_image_view =
             std::static_pointer_cast<URenderPass>(m_point_light_shadow_pass)->getFramebufferImageViews()[0];
         main_camera_pass->m_directional_light_shadow_color_image_view =
-            std::static_pointer_cast<URenderPass>(m_shadow_pass)->m_framebuffer.attachments[0].view;
+            std::static_pointer_cast<URenderPass>(m_shadow_pass)->Framebuffer.attachments[0].view;
 
         m_main_camera_pass->initialize(nullptr);
 

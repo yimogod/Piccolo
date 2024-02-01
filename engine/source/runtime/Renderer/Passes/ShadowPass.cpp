@@ -8,8 +8,6 @@
 #include <mesh_directional_light_shadow_frag.h>
 #include <mesh_directional_light_shadow_vert.h>
 
-#include <stdexcept>
-
 namespace Piccolo
 {
     void UShadowPass::initialize(const FRenderPassInitInfo* init_info)
@@ -83,40 +81,40 @@ namespace Piccolo
 
         ////////////////////////////// TODO 兼容代码  ///////////////////////
         // color and depth
-        m_framebuffer.attachments.resize(2);
+        Framebuffer.attachments.resize(2);
 
         // color
         FVulkanFrameBufferAttachment Att1   = Proxy.FrameBuffer.GetAttachment(0);
-        m_framebuffer.attachments[0].format = (RHIFormat)Att1.Format;
+        Framebuffer.attachments[0].format = (RHIFormat)Att1.Format;
         
         auto image = new VulkanImage();
         image->setResource(Att1.Image);
-        m_framebuffer.attachments[0].image = image;
+        Framebuffer.attachments[0].image = image;
 
         auto image_view = new VulkanImageView();
         image_view->setResource(Att1.View);
-        m_framebuffer.attachments[0].view  = image_view;
+        Framebuffer.attachments[0].view  = image_view;
 
         auto memory = new VulkanDeviceMemory();
         memory->setResource(Att1.Mem);
-        m_framebuffer.attachments[0].mem = memory;
+        Framebuffer.attachments[0].mem = memory;
 
 
         // depth
         FVulkanFrameBufferAttachment Att2   = Proxy.FrameBuffer.GetAttachment(1);
-        m_framebuffer.attachments[1].format = (RHIFormat)Att2.Format;
+        Framebuffer.attachments[1].format = (RHIFormat)Att2.Format;
 
         auto image2 = new VulkanImage();
         image2->setResource(Att2.Image);
-        m_framebuffer.attachments[1].image = image2;
+        Framebuffer.attachments[1].image = image2;
 
         auto image_view2 = new VulkanImageView();
         image_view2->setResource(Att2.View);
-        m_framebuffer.attachments[1].view = image_view2;
+        Framebuffer.attachments[1].view = image_view2;
 
         auto memory2 = new VulkanDeviceMemory();
         memory->setResource(Att2.Mem);
-        m_framebuffer.attachments[1].mem = memory2;
+        Framebuffer.attachments[1].mem = memory2;
     }
     void UShadowPass::setupRenderPass()
     {
@@ -167,7 +165,7 @@ namespace Piccolo
         //TODO 兼容旧引擎
 		auto pRenderPass = new VulkanRenderPass();
         pRenderPass->setResource(Proxy.RenderPass.GetVKRenderPass());
-        m_framebuffer.render_pass = pRenderPass;
+        Framebuffer.render_pass = pRenderPass;
     }
     void UShadowPass::setupFramebuffer()
     {
@@ -175,8 +173,8 @@ namespace Piccolo
         Proxy.FrameBuffer.CreateFrameBuffer(m_rhi->m_device, Proxy.RenderPass.GetVKRenderPass());
 
         //TODO 兼容旧引擎
-    	m_framebuffer.framebuffer = new VulkanFramebuffer();
-        ((VulkanFramebuffer*)m_framebuffer.framebuffer)->setResource(Proxy.FrameBuffer.GetFrameBuffer());
+    	Framebuffer.framebuffer = new VulkanFramebuffer();
+        ((VulkanFramebuffer*)Framebuffer.framebuffer)->setResource(Proxy.FrameBuffer.GetFrameBuffer());
     }
     void UShadowPass::setupDescriptorSetLayout()
     {
@@ -262,14 +260,14 @@ namespace Piccolo
 
 
         //TODO 兼容旧数据
-        m_render_pipelines.resize(1);
+        Pipelines.resize(1);
         VulkanPipeline* VP = new VulkanPipeline();
         VP->setResource(Pipeline.GetPipeline());
-        m_render_pipelines[0].pipeline = VP;
+        Pipelines[0].pipeline = VP;
         
         VulkanPipelineLayout* VPL = new VulkanPipelineLayout();
         VPL->setResource(Pipeline.GetLayout());
-        m_render_pipelines[0].layout = VPL;
+        Pipelines[0].layout = VPL;
 
         Shader.DestroyShader(m_rhi->m_device);
     }

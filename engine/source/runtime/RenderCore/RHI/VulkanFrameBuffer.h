@@ -27,7 +27,6 @@ struct FVulkanFrameBufferAttachment
 //1是只有一个VkFrameBuffer, 在pioccolo中, 如果不做present, 一个足够
 //2是展示到屏幕, 因为用了3缓冲技术, 所以会有三个framebuffer
 //除了是VkFrameBuffer的封装外, 还缓存了自已用到的所有的附件
-
 //TODO 将普通的FrameBuffer和PresentFrameBuffer拆分开?
 class FVulkanFrameBuffer
 {
@@ -44,7 +43,7 @@ public:
     //获取对应的FrameBuffer
     VkFramebuffer& GetFrameBuffer(uint32_t Index) { return CachedFramebuffers[Index]; }
     //获取当前正在使用的FrameBuffer
-    VkFramebuffer& GetFrameBuffer() { return CachedFramebuffers[BufferIndex]; }
+    VkFramebuffer& GetFrameBuffer() { return CachedFramebuffers[CurrBufferIndex]; }
     //获取帧绑定, 描述符(VkDescriptorImageInfo)中会用到
     FVulkanFrameBufferAttachment& GetAttachment(uint32_t Index) { return CachedAttachments[Index]; }
 
@@ -56,7 +55,7 @@ public:
     VkExtent2D GetFullExtent();
 
     //设置马上要用到的vkframebuffer索引.
-    void SetCurrentBufferIndex(uint32_t Index) { BufferIndex = Index; }
+    void SetCurrentBufferIndex(uint32_t Index) { CurrBufferIndex = Index; }
     //添加普通的附件. 不包含SwapChain的imageview. 交换链的imageview要通过
     void AddFrameAttachment(FVulkanFrameBufferAttachment& Attachment);
 
@@ -79,7 +78,7 @@ public:
 private:
     void CreateFrameBufferInner(VkDevice& Device, VkRenderPass& RenderPass, std::vector<VkImageView>& ImageViews, uint32_t FrameLayers, uint32_t BufferIndex);
 
-    uint32_t BufferIndex = 0;
+    uint32_t CurrBufferIndex = 0;
 
     //本Pass需要的所有的帧缓冲. 一般的中间流程的pass创建一个Framebuffer就好.
     //但最终用于输出到屏幕的需要3个交换链对应的3个Framebuffer. 所以这里
@@ -95,4 +94,3 @@ private:
     //frame buffer对应的clear value
     std::vector<VkClearValue> ClearValues;
 };
-

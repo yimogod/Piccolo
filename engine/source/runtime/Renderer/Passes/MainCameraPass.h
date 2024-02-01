@@ -56,8 +56,6 @@ namespace Piccolo
                   CombineUIPass&    combine_ui_pass,
                   uint32_t          current_swapchain_image_index);
 
-        void copyNormalAndDepthImage();
-
         RHIImageView* m_point_light_shadow_color_image_view;
         RHIImageView* m_directional_light_shadow_color_image_view;
 
@@ -70,23 +68,21 @@ namespace Piccolo
 
         RHICommandBuffer* getRenderCommandBuffer();
     private:
-        void setupAttachments();
-        void setupRenderPass();
-        void setupDescriptorSetLayout();
-        void setupPipelines();
-        void setupDescriptorSet();
-        void setupFramebufferDescriptorSet();
-        void setupSwapchainFramebuffers();
+        void SetupAttachments();
+        void SetupRenderPass();
+        void SetupDescriptorSetLayout();
+        void SetupPipelines();
+        void SetupDescriptorSet();
+        void SetupFramebufferDescriptorSet();
+        void SetupSwapchainFramebuffers();
 
-        void setupModelGlobalDescriptorSet();
-        void setupSkyboxDescriptorSet();
-        void setupAxisDescriptorSet();
-        void setupGbufferLightingDescriptorSet();
+        void SetupModelGlobalDescriptorSet();
+        void SetupSkyboxDescriptorSet();
+        void SetupAxisDescriptorSet();
+        void SetupGbufferLightingDescriptorSet();
 
-        void drawMeshGbuffer();
-        void drawDeferredLighting();
-        void drawMeshLighting();
-        void drawSkybox();
+        void DrawMeshGbuffer();
+        void DrawDeferredLighting();
         void drawAxis();
 
     private:

@@ -114,14 +114,14 @@ void FVulkanFrameBuffer::CreateFrameBufferInner(VkDevice&                 Device
     }
 
     //创建Framebuffer对应的clear value
-    if(ClearValues.size() == 0)
+    if(ClearValues.empty())
     {
         ClearValues.resize(ImageViews.size());
     }
 }
 void FVulkanFrameBuffer::DestroyFrameBuffer(VkDevice& Device)
 {
-    for (auto FrameBuffer : CachedFramebuffers)
+    for (auto* FrameBuffer : CachedFramebuffers)
     {
         vkDestroyFramebuffer(Device, FrameBuffer, nullptr);
     }

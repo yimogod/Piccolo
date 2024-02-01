@@ -453,8 +453,6 @@ namespace Piccolo
             return;
         }
 
-        LOG_WARN("~~~~~~~~~~~~~~~~~");
-
         //VkSemaphore semaphores[2] = { ((VulkanSemaphore*)m_image_available_for_texturescopy_semaphores[m_current_frame_index])->getResource(),
                                      //DrawingCompleteSemaphore[m_current_frame_index] };
 
@@ -477,8 +475,6 @@ namespace Piccolo
             LOG_ERROR("vkQueueSubmit failed!");
             return;
         }
-
-        LOG_WARN("~~~~~~~~~~~~~~~~~22222");
 
         // 展示图像
         VkPresentInfoKHR present_info   = {};

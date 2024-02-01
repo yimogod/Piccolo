@@ -18,12 +18,12 @@ namespace Piccolo
 
     void URenderPass::postInitialize() {}
 
-    RHIRenderPass* URenderPass::getRenderPass() const { return m_framebuffer.render_pass; }
+    RHIRenderPass* URenderPass::getRenderPass() const { return Framebuffer.render_pass; }
 
     std::vector<RHIImageView*> URenderPass::getFramebufferImageViews() const
     {
         std::vector<RHIImageView*> image_views;
-        for (auto& attach : m_framebuffer.attachments)
+        for (auto& attach : Framebuffer.attachments)
         {
             image_views.push_back(attach.view);
         }

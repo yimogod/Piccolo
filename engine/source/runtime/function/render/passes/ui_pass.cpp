@@ -15,7 +15,7 @@ namespace Piccolo
     {
         URenderPass::initialize(nullptr);
 
-        m_framebuffer.render_pass = static_cast<const UIPassInitInfo*>(init_info)->render_pass;
+        Framebuffer.render_pass = static_cast<const UIPassInitInfo*>(init_info)->render_pass;
     }
 
     void UIPass::initializeUIRenderBackend(WindowUI* window_ui)
@@ -36,7 +36,7 @@ namespace Piccolo
         // see ImGui_ImplVulkanH_GetMinImageCountFromPresentMode
         init_info.MinImageCount = 3;
         init_info.ImageCount    = 3;
-        ImGui_ImplVulkan_Init(&init_info, ((VulkanRenderPass*)m_framebuffer.render_pass)->getResource());
+        ImGui_ImplVulkan_Init(&init_info, ((VulkanRenderPass*)Framebuffer.render_pass)->getResource());
 
         uploadFonts();
     }

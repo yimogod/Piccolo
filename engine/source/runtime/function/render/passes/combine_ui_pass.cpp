@@ -15,7 +15,7 @@ namespace Piccolo
         URenderPass::initialize(nullptr);
 
         const CombineUIPassInitInfo* _init_info = static_cast<const CombineUIPassInitInfo*>(init_info);
-        m_framebuffer.render_pass               = _init_info->render_pass;
+        Framebuffer.render_pass               = _init_info->render_pass;
 
         setupDescriptorSetLayout();
         setupPipelines();
@@ -59,7 +59,7 @@ namespace Piccolo
 
     void CombineUIPass::setupPipelines()
     {
-        m_render_pipelines.resize(1);
+        Pipelines.resize(1);
 
         RHIDescriptorSetLayout*      descriptorset_layouts[1] = {m_descriptor_infos[0].layout};
         RHIPipelineLayoutCreateInfo pipeline_layout_create_info {};
@@ -67,7 +67,7 @@ namespace Piccolo
         pipeline_layout_create_info.setLayoutCount = 1;
         pipeline_layout_create_info.pSetLayouts    = descriptorset_layouts;
 
-        if (RHI_SUCCESS != m_rhi->createPipelineLayout(&pipeline_layout_create_info, m_render_pipelines[0].layout))
+        if (RHI_SUCCESS != m_rhi->createPipelineLayout(&pipeline_layout_create_info, Pipelines[0].layout))
         {
             throw std::runtime_error("create combine ui pipeline layout");
         }
@@ -175,13 +175,13 @@ namespace Piccolo
         pipelineInfo.pMultisampleState   = &multisample_state_create_info;
         pipelineInfo.pColorBlendState    = &color_blend_state_create_info;
         pipelineInfo.pDepthStencilState  = &depth_stencil_create_info;
-        pipelineInfo.layout              = m_render_pipelines[0].layout;
-        pipelineInfo.renderPass          = m_framebuffer.render_pass;
+        pipelineInfo.layout              = Pipelines[0].layout;
+        pipelineInfo.renderPass          = Framebuffer.render_pass;
         pipelineInfo.subpass             = E_main_camera_subpass_combine_ui;
         pipelineInfo.basePipelineHandle  = RHI_NULL_HANDLE;
         pipelineInfo.pDynamicState       = &dynamic_state_create_info;
 
-        if (RHI_SUCCESS != m_rhi->createGraphicsPipelines(RHI_NULL_HANDLE, 1, &pipelineInfo, m_render_pipelines[0].pipeline))
+        if (RHI_SUCCESS != m_rhi->createGraphicsPipelines(RHI_NULL_HANDLE, 1, &pipelineInfo, Pipelines[0].pipeline))
         {
             throw std::runtime_error("create post process graphics pipeline");
         }
@@ -260,12 +260,12 @@ namespace Piccolo
                                1.0};
         RHIRect2D   scissor  = {0, 0, m_rhi->getSwapchainInfo().extent.width, m_rhi->getSwapchainInfo().extent.height};
 
-        m_rhi->cmdBindPipelinePFN(m_rhi->getCurrentCommandBuffer(), RHI_PIPELINE_BIND_POINT_GRAPHICS, m_render_pipelines[0].pipeline);
+        m_rhi->cmdBindPipelinePFN(m_rhi->getCurrentCommandBuffer(), RHI_PIPELINE_BIND_POINT_GRAPHICS, Pipelines[0].pipeline);
         m_rhi->cmdSetViewportPFN(m_rhi->getCurrentCommandBuffer(), 0, 1, &viewport);
         m_rhi->cmdSetScissorPFN(m_rhi->getCurrentCommandBuffer(), 0, 1, &scissor);
         m_rhi->cmdBindDescriptorSetsPFN(m_rhi->getCurrentCommandBuffer(),
                                         RHI_PIPELINE_BIND_POINT_GRAPHICS,
-                                        m_render_pipelines[0].layout,
+                                        Pipelines[0].layout,
                                         0,
                                         1,
                                         &m_descriptor_infos[0].descriptor_set,
