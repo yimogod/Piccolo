@@ -276,13 +276,9 @@ namespace Piccolo
         void createSyncPrimitives();
         void createAssetAllocator();
 
-    public:
-        bool isPointLightShadowEnabled() override;
-
     private:
         bool m_enable_validation_Layers{ true };
         bool m_enable_debug_utils_label{ true };
-        bool m_enable_point_light_shadow{ true };
 
         // used in descriptor pool creation
         uint32_t m_max_vertex_blending_mesh_count{ 256 };

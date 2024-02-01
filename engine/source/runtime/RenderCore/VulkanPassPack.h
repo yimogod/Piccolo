@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include "RenderCore/RHI/VulkanAttachment.h"
 #include "VulkanRHI.h"
 
 // 某一个pass的vulkan renderpass渲染数据的集合. 对应了
@@ -43,4 +44,7 @@ public:
 
     //Pass用到的所有的管线, 可能是多个
     std::vector<FVulkanPipeline> Pipelines;
+
+    //Pass用到的所有的附件. 多个
+    std::vector<FVulkanAttachment> Attachments;
 };

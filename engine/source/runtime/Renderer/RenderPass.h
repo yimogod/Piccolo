@@ -57,6 +57,7 @@ namespace Piccolo
     class URenderPass : public URenderPassBase
     {
     public:
+        // TODO 旧引擎数据
         //逻辑上frame buffer用到的附件数据
         struct FFrameBufferAttachment
         {
@@ -72,6 +73,7 @@ namespace Piccolo
 
         // frame和渲染通道是一一对应, 本对象包含了帧缓存的所有数据
         // 包含帧缓存, render pass, attachments
+        // TODO 旧引擎数据
         struct FFramebuffer
         {
             int             width;
@@ -86,12 +88,14 @@ namespace Piccolo
         };
 
         // 描述符集合数据块. 包含布局和描述符集
+        // TODO 旧引擎数据
         struct FDescriptor
         {
             RHIDescriptorSetLayout* layout;
             RHIDescriptorSet*       descriptor_set;
         };
 
+        // TODO 旧引擎数据
         struct FRenderPipelineBase
         {
             RHIPipelineLayout* layout;
@@ -102,10 +106,13 @@ namespace Piccolo
         GlobalRenderResource* m_global_render_resource {nullptr};
 
         //这个pass的用到的shader的布局信息
+        // TODO 旧引擎数据
         std::vector<FDescriptor>         m_descriptor_infos;
         // 4个渲染管线? 忘记啥意思了. 一个subpass对应一个pipeline?
+        // TODO 旧引擎数据
         std::vector<FRenderPipelineBase> Pipelines;
         //此渲染pass输出的framebuffer
+        // TODO 旧引擎数据
         FFramebuffer                     Framebuffer;
 
         void setCommonInfo(FRenderPassCommonInfo common_info);

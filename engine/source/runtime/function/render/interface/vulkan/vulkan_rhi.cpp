@@ -98,12 +98,6 @@ namespace Piccolo
         m_enable_debug_utils_label  = false;
 #endif
 
-#if defined(__GNUC__) && defined(__MACH__)
-        m_enable_point_light_shadow = false;
-#else
-        m_enable_point_light_shadow = true;
-#endif
-
 #if defined(__GNUC__)
         // https://gcc.gnu.org/onlinedocs/cpp/Common-Predefined-Macros.html
 #if defined(__linux__)
@@ -783,12 +777,6 @@ namespace Piccolo
 
         // support independent blending
         physical_device_features.independentBlend = VK_TRUE;
-
-        // support geometry shader
-        if (m_enable_point_light_shadow)
-        {
-            physical_device_features.geometryShader = VK_TRUE;
-        }
 
         // device create info
         VkDeviceCreateInfo device_create_info {};
@@ -3538,7 +3526,6 @@ namespace Piccolo
             _vkCmdEndDebugUtilsLabelEXT(((VulkanCommandBuffer*)commond_buffer)->getResource());
         }
     }
-    bool VulkanRHI::isPointLightShadowEnabled(){ return m_enable_point_light_shadow; }
 
     RHICommandBuffer* VulkanRHI::getCurrentCommandBuffer() const
     {

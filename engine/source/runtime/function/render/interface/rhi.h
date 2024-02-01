@@ -26,7 +26,6 @@ namespace Piccolo
         virtual void initialize(RHIInitInfo initialize_info) = 0;
         virtual void prepareContext() = 0;
 
-        virtual bool isPointLightShadowEnabled() = 0;
         // allocate and create
         virtual bool allocateCommandBuffers(const RHICommandBufferAllocateInfo* pAllocateInfo, RHICommandBuffer* &pCommandBuffers) = 0;
         virtual bool allocateDescriptorSets(const RHIDescriptorSetAllocateInfo* pAllocateInfo, RHIDescriptorSet* &pDescriptorSets) = 0;

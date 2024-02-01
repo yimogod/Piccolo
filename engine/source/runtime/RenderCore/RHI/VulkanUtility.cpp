@@ -3,11 +3,11 @@
 
 uint32_t FVulkanUtility::FindMemoryType(VkPhysicalDeviceMemoryProperties& MemProperties,
                                uint32_t RequiredMemoryTypeBits,
-                               VkMemoryPropertyFlags RequiredFlag)
+                               VkMemoryPropertyFlags MemFlag)
 {
     for (uint32_t i = 0; i < MemProperties.memoryTypeCount; i++) {
         if ((RequiredMemoryTypeBits & (1 << i)) &&
-            (MemProperties.memoryTypes[i].propertyFlags & RequiredFlag) == RequiredFlag) {
+            (MemProperties.memoryTypes[i].propertyFlags & MemFlag) == MemFlag) {
             //std::cout << "found Memory Property " << RequriedProperty << " at index " << i << std::endl;
             return i;
         }
@@ -16,6 +16,32 @@ uint32_t FVulkanUtility::FindMemoryType(VkPhysicalDeviceMemoryProperties& MemPro
     throw std::runtime_error("failed to find suitable memory type!");
     return -1;
 }
+
+VkResult FVulkanUtility::AllocateMemory(VkDevice& Device,
+                                        VkPhysicalDevice GPU,
+                                        VkMemoryPropertyFlags MemFlag,
+                                        VkMemoryRequirements& MemRequire,
+                                        VkDeviceMemory* pOutMem)
+{
+    //开辟显存空间
+    //获取显卡的显存的属性. 包含显存类型(包含内存类型和对应的堆索引)和
+    //显存堆数据(包含堆大小和堆类型--一般都是device_local)
+    VkPhysicalDeviceMemoryProperties MemProperties;
+    vkGetPhysicalDeviceMemoryProperties(GPU, &MemProperties);
+
+    uint32_t MemoryTypeIndex = FVulkanUtility::FindMemoryType(MemProperties,
+                                                              MemRequire.memoryTypeBits,
+                                                              MemFlag);
+
+    //显存开辟器
+    VkMemoryAllocateInfo AllocInfo{};
+    AllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    AllocInfo.allocationSize = MemRequire.size;
+    AllocInfo.memoryTypeIndex = MemoryTypeIndex;
+
+    return vkAllocateMemory(Device, &AllocInfo, nullptr, pOutMem);
+}
+
 
 void FVulkanUtility::CreateImage(VkDevice Device,
                                     VkPhysicalDevice Gpu,
