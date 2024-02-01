@@ -6,7 +6,6 @@
 
 #include "runtime/function/render/passes/color_grading_pass.h"
 #include "runtime/function/render/passes/combine_ui_pass.h"
-#include "runtime/function/render/passes/point_light_pass.h"
 #include "runtime/function/render/passes/tone_mapping_pass.h"
 #include "runtime/function/render/passes/ui_pass.h"
 
@@ -18,7 +17,6 @@ namespace Piccolo
 {
     void URenderPipeline::initialize(FRenderPipelineInitInfo init_info)
     {
-        m_point_light_shadow_pass = std::make_shared<PointLightShadowPass>();
         m_shadow_pass             = std::make_shared<UShadowPass>();
         m_main_camera_pass        = std::make_shared<UMainCameraPass>();
         m_tone_mapping_pass       = std::make_shared<ToneMappingPass>();
@@ -31,7 +29,6 @@ namespace Piccolo
         pass_common_info.render_resource = init_info.render_resource;
         pass_common_info.Vulkan = Vulkan;
 
-        m_point_light_shadow_pass->setCommonInfo(pass_common_info);
         m_shadow_pass->setCommonInfo(pass_common_info);
         m_main_camera_pass->setCommonInfo(pass_common_info);
         m_tone_mapping_pass->setCommonInfo(pass_common_info);
@@ -39,26 +36,20 @@ namespace Piccolo
         m_ui_pass->setCommonInfo(pass_common_info);
         m_combine_ui_pass->setCommonInfo(pass_common_info);
 
-        m_point_light_shadow_pass->initialize(nullptr);
         m_shadow_pass->initialize(nullptr);
 
         std::shared_ptr<UMainCameraPass> main_camera_pass = std::static_pointer_cast<UMainCameraPass>(m_main_camera_pass);
         std::shared_ptr<URenderPass>     _main_camera_pass = std::static_pointer_cast<URenderPass>(m_main_camera_pass);
 
-        main_camera_pass->m_point_light_shadow_color_image_view =
-            std::static_pointer_cast<URenderPass>(m_point_light_shadow_pass)->getFramebufferImageViews()[0];
         main_camera_pass->m_directional_light_shadow_color_image_view =
             std::static_pointer_cast<URenderPass>(m_shadow_pass)->Framebuffer.attachments[0].view;
 
         m_main_camera_pass->initialize(nullptr);
 
         std::vector<RHIDescriptorSetLayout*> descriptor_layouts = _main_camera_pass->getDescriptorSetLayouts();
-        std::static_pointer_cast<PointLightShadowPass>(m_point_light_shadow_pass)
-            ->setPerMeshLayout(descriptor_layouts[UMainCameraPass::LayoutType::_per_mesh]);
         std::static_pointer_cast<UShadowPass>(m_shadow_pass)
             ->setPerMeshLayout(descriptor_layouts[UMainCameraPass::LayoutType::_per_mesh]);
 
-        m_point_light_shadow_pass->postInitialize();
         m_shadow_pass->postInitialize();
 
         ToneMappingPassInitInfo tone_mapping_init_info;
@@ -106,8 +97,6 @@ namespace Piccolo
 
         //平行光阴影pass
         static_cast<UShadowPass*>(m_shadow_pass.get())->draw();
-        //点光阴影pass
-        static_cast<PointLightShadowPass*>(m_point_light_shadow_pass.get())->draw();
 
         ColorGradingPass& color_grading_pass = *(static_cast<ColorGradingPass*>(m_color_grading_pass.get()));
         ToneMappingPass&  tone_mapping_pass  = *(static_cast<ToneMappingPass*>(m_tone_mapping_pass.get()));

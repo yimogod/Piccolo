@@ -53,7 +53,8 @@ for (highp int light_index = 0; light_index < int(point_light_num) && light_inde
             highp float layer_index =
                 (0.5 + 0.5 * sign(position_spherical_function_domain.z)) + 2.0 * float(light_index);
 
-            highp float depth          = texture(point_lights_shadow, vec3(uv, layer_index)).r + 0.000075;
+            //highp float depth          = texture(point_lights_shadow, vec3(uv, layer_index)).r + 0.000075;
+            highp float depth          = 0.000075;
             highp float closest_length = (depth)*point_light_radius;
 
             highp float current_length = length(position_view_space);

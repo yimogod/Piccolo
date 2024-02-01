@@ -45,7 +45,6 @@ namespace Piccolo
         
         //构成此渲染的各个pass
         std::shared_ptr<URenderPass> m_shadow_pass;
-        std::shared_ptr<URenderPass> m_point_light_shadow_pass;
         std::shared_ptr<URenderPass> m_main_camera_pass;
         std::shared_ptr<URenderPass> m_color_grading_pass;
         std::shared_ptr<URenderPass> m_tone_mapping_pass;

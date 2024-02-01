@@ -697,9 +697,9 @@ namespace Piccolo
             }
         }
 
-        //_mesh_global. 8个绑定, mesh global, 和mesh.frag的set=0的8个绑定对应上了
+        //_mesh_global. 7个绑定, mesh global, 和mesh.frag的set=0的8个绑定对应上了
         {
-            RHIDescriptorSetLayoutBinding mesh_global_layout_bindings[8];
+            RHIDescriptorSetLayoutBinding mesh_global_layout_bindings[7];
 
             //mvp, camera position, ambient light, point light nu,, pointLight数组, 平行光以及平行光的mvp
             RHIDescriptorSetLayoutBinding& mesh_global_layout_perframe_storage_buffer_binding =
@@ -753,17 +753,11 @@ namespace Piccolo
             mesh_global_layout_specular_texture_binding         = mesh_global_layout_brdfLUT_texture_binding;
             mesh_global_layout_specular_texture_binding.binding = 5;
 
-            //点光源阴影
-            RHIDescriptorSetLayoutBinding& mesh_global_layout_point_light_shadow_texture_binding =
-                mesh_global_layout_bindings[6];
-            mesh_global_layout_point_light_shadow_texture_binding         = mesh_global_layout_brdfLUT_texture_binding;
-            mesh_global_layout_point_light_shadow_texture_binding.binding = 6;
-
             //方向光阴影
             RHIDescriptorSetLayoutBinding& mesh_global_layout_directional_light_shadow_texture_binding =
-                mesh_global_layout_bindings[7];
+                mesh_global_layout_bindings[6];
             mesh_global_layout_directional_light_shadow_texture_binding = mesh_global_layout_brdfLUT_texture_binding;
-            mesh_global_layout_directional_light_shadow_texture_binding.binding = 7;
+            mesh_global_layout_directional_light_shadow_texture_binding.binding = 6;
 
             RHIDescriptorSetLayoutCreateInfo mesh_global_layout_create_info;
             mesh_global_layout_create_info.sType = RHI_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -1444,7 +1438,7 @@ namespace Piccolo
             throw std::runtime_error("allocate mesh global descriptor set");
         }
 
-        //------- 和Layout的Binding一样, 都有8个
+        //------- 和Layout的Binding一样, 都有7个
 
         //前三个buffer都是指向同一个upload ring buffer. 且offet都是0. 这是为何?
         RHIDescriptorBufferInfo mesh_perframe_storage_buffer_info = {};
@@ -1492,19 +1486,14 @@ namespace Piccolo
         specular_texture_image_info.imageView   = m_global_render_resource->_ibl_resource._specular_texture_image_view;
         specular_texture_image_info.imageLayout = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-        RHIDescriptorImageInfo point_light_shadow_texture_image_info {};
-        point_light_shadow_texture_image_info.sampler     = m_rhi->getOrCreateDefaultSampler(Default_Sampler_Nearest);
-        point_light_shadow_texture_image_info.imageView   = m_point_light_shadow_color_image_view;
-        point_light_shadow_texture_image_info.imageLayout = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
         RHIDescriptorImageInfo directional_light_shadow_texture_image_info {};
         directional_light_shadow_texture_image_info.sampler = m_rhi->getOrCreateDefaultSampler(Default_Sampler_Nearest);
         directional_light_shadow_texture_image_info.imageView   = m_directional_light_shadow_color_image_view;
         directional_light_shadow_texture_image_info.imageLayout = RHI_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-        //8个wirite. 对应了8个绑定. shader中的 layout(set = 0, binding = 7) 
+        //7个wirite. 对应了7个绑定. shader中的 layout(set = 0, binding = 6)
         //前三个是buffer, 后面5个是sampler
-        RHIWriteDescriptorSet mesh_descriptor_writes_info[8];
+        RHIWriteDescriptorSet mesh_descriptor_writes_info[7];
 
         mesh_descriptor_writes_info[0].sType           = RHI_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         mesh_descriptor_writes_info[0].pNext           = nullptr;
@@ -1552,11 +1541,7 @@ namespace Piccolo
 
         mesh_descriptor_writes_info[6]            = mesh_descriptor_writes_info[3];
         mesh_descriptor_writes_info[6].dstBinding = 6;
-        mesh_descriptor_writes_info[6].pImageInfo = &point_light_shadow_texture_image_info;
-
-        mesh_descriptor_writes_info[7]            = mesh_descriptor_writes_info[3];
-        mesh_descriptor_writes_info[7].dstBinding = 7;
-        mesh_descriptor_writes_info[7].pImageInfo = &directional_light_shadow_texture_image_info;
+        mesh_descriptor_writes_info[6].pImageInfo = &directional_light_shadow_texture_image_info;
 
         m_rhi->updateDescriptorSets(sizeof(mesh_descriptor_writes_info) / sizeof(mesh_descriptor_writes_info[0]),
                                     mesh_descriptor_writes_info,
