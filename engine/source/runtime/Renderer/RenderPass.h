@@ -108,6 +108,7 @@ namespace Piccolo
         //此渲染pass输出的framebuffer
         FFramebuffer                     Framebuffer;
 
+        void setCommonInfo(FRenderPassCommonInfo common_info);
         void initialize(const FRenderPassInitInfo* init_info) override;
         void postInitialize() override;
 

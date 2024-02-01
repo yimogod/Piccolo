@@ -1,5 +1,5 @@
 #include "VulkanBuffer.h"
-#include "VulkanRHIUtility.h"
+#include "VulkanUtility.h"
 #include "vulkan/vulkan_core.h"
 
 #include <cassert>
@@ -53,7 +53,7 @@ void FVulkanBuffer::InnerCreateBuffer(VkDevice& Device,
     vkGetPhysicalDeviceMemoryProperties(Gpu, &MemProperties);
 
     //还创建了专门的VkDeviceMemory对象. 到这里猜测一下. buffer只是个指针, 真正的内存分配和拥有者还是个独立的对象
-    uint32_t MemoryTypeIndex = FVulkanRHIUtility::FindMemoryType(MemProperties,
+    uint32_t MemoryTypeIndex = FVulkanUtility::FindMemoryType(MemProperties,
                                                                  MemRequirements.memoryTypeBits,
                                                                  MemoryFlag);
 

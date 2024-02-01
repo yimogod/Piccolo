@@ -6,10 +6,10 @@
 
 struct FVulkanFrameBufferAttachment;
 
-class FVulkanRHIUtility
+class FVulkanUtility
 {
 public:
-    FVulkanRHIUtility() = default;
+    FVulkanUtility() = default;
 
     //根据参数, 获取内存类型的索引
     static uint32_t FindMemoryType(VkPhysicalDeviceMemoryProperties& MemProperties,

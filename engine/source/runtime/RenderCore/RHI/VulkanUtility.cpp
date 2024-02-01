@@ -1,7 +1,7 @@
-#include "VulkanRHIUtility.h"
+#include "VulkanUtility.h"
 #include "VulkanFrameBuffer.h"
 
-uint32_t FVulkanRHIUtility::FindMemoryType(VkPhysicalDeviceMemoryProperties& MemProperties,
+uint32_t FVulkanUtility::FindMemoryType(VkPhysicalDeviceMemoryProperties& MemProperties,
                                uint32_t RequiredMemoryTypeBits,
                                VkMemoryPropertyFlags RequiredFlag)
 {
@@ -17,7 +17,7 @@ uint32_t FVulkanRHIUtility::FindMemoryType(VkPhysicalDeviceMemoryProperties& Mem
     return -1;
 }
 
-void FVulkanRHIUtility::CreateImage(VkDevice Device,
+void FVulkanUtility::CreateImage(VkDevice Device,
                                     VkPhysicalDevice Gpu,
                                     uint32_t Width,
                                     uint32_t Height,
@@ -60,7 +60,7 @@ void FVulkanRHIUtility::CreateImage(VkDevice Device,
     VkPhysicalDeviceMemoryProperties MemProperties;
     vkGetPhysicalDeviceMemoryProperties(Gpu, &MemProperties);
 
-    uint32_t MemoryTypeIndex = FVulkanRHIUtility::FindMemoryType(MemProperties,
+    uint32_t MemoryTypeIndex = FVulkanUtility::FindMemoryType(MemProperties,
                                                                  MemRequirements.memoryTypeBits,
                                                                  MemoryProperty);
 
@@ -77,7 +77,7 @@ void FVulkanRHIUtility::CreateImage(VkDevice Device,
     vkBindImageMemory(Device, OutImage, OutImageMemory, 0);
 }
 
- VkImageView FVulkanRHIUtility::CreateImageView(VkDevice Device,
+ VkImageView FVulkanUtility::CreateImageView(VkDevice Device,
                                                VkImage Image,
                                                VkFormat Format,
                                                VkImageAspectFlags AspectFlags,
@@ -110,7 +110,7 @@ void FVulkanRHIUtility::CreateImage(VkDevice Device,
 }
 
 //TODO 参数太多。 想办法放入FVulkanFrameBufferAttachment成员方法一些
- void FVulkanRHIUtility::CreateFrameAttachment(FVulkanFrameBufferAttachment& OutAttachment,
+ void FVulkanUtility::CreateFrameAttachment(FVulkanFrameBufferAttachment& OutAttachment,
                                                VkDevice                      Device,
                                                VkPhysicalDevice              Gpu,
                                                VkImageTiling                 Tiling,

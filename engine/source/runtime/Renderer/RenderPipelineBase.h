@@ -5,6 +5,7 @@
 #include <memory>
 #include <vector>
 
+#include "RenderPass.h"
 #include "RenderPassBase.h"
 
 namespace Piccolo
@@ -15,7 +16,6 @@ namespace Piccolo
 
     struct FRenderPipelineInitInfo
     {
-        bool                                enable_fxaa {false};
         std::shared_ptr<RenderResourceBase> render_resource;
     };
 
@@ -40,16 +40,17 @@ namespace Piccolo
         void             initializeUIRenderBackend(WindowUI* window_ui);
 
         std::shared_ptr<RHI> m_rhi;
+        std::shared_ptr<UVulkanProxy> Vulkan;
     public:
         
         //构成此渲染的各个pass
-        std::shared_ptr<URenderPassBase> m_shadow_pass;
-        std::shared_ptr<URenderPassBase> m_point_light_shadow_pass;
-        std::shared_ptr<URenderPassBase> m_main_camera_pass;
-        std::shared_ptr<URenderPassBase> m_color_grading_pass;
-        std::shared_ptr<URenderPassBase> m_tone_mapping_pass;
-        std::shared_ptr<URenderPassBase> m_ui_pass;
-        std::shared_ptr<URenderPassBase> m_combine_ui_pass;
+        std::shared_ptr<URenderPass> m_shadow_pass;
+        std::shared_ptr<URenderPass> m_point_light_shadow_pass;
+        std::shared_ptr<URenderPass> m_main_camera_pass;
+        std::shared_ptr<URenderPass> m_color_grading_pass;
+        std::shared_ptr<URenderPass> m_tone_mapping_pass;
+        std::shared_ptr<URenderPass> m_ui_pass;
+        std::shared_ptr<URenderPass> m_combine_ui_pass;
 
     };
 } // namespace Piccolo

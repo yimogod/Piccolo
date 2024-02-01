@@ -14,6 +14,14 @@ namespace Piccolo
         m_global_render_resource =
             &(std::static_pointer_cast<RenderResource>(m_render_resource)->m_global_render_resource);
     }
+
+    void URenderPass::setCommonInfo(FRenderPassCommonInfo common_info)
+    {
+        m_rhi             = std::dynamic_pointer_cast<VulkanRHI>(common_info.rhi);
+        m_render_resource = common_info.render_resource;
+        Vulkan = common_info.Vulkan;
+    }
+
     void URenderPass::draw() {}
 
     void URenderPass::postInitialize() {}

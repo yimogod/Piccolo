@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RenderCore/VulkanProxy.h"
 #include "function/render/interface/vulkan/vulkan_rhi.h"
 #include "runtime/function/render/interface/rhi.h"
 
@@ -14,6 +15,7 @@ namespace Piccolo
 
     struct FRenderPassCommonInfo
     {
+        std::shared_ptr<UVulkanProxy>                Vulkan;
         std::shared_ptr<RHI>                rhi;
         std::shared_ptr<RenderResourceBase> render_resource;
     };
@@ -23,7 +25,6 @@ namespace Piccolo
     public:
         virtual void initialize(const FRenderPassInitInfo* init_info) = 0;
         virtual void postInitialize();
-        virtual void setCommonInfo(FRenderPassCommonInfo common_info);
         virtual void preparePassData(std::shared_ptr<RenderResourceBase> render_resource);
         virtual void initializeUIRenderBackend(WindowUI* window_ui);
 

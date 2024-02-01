@@ -43,6 +43,7 @@ void URenderSystem::initialize(FRenderSystemInitInfo init_info)
     m_rhi = std::make_shared<VulkanRHI>();
     m_rhi->initialize(rhi_init_info);
 
+    // 初始化Vulkan对象
     Vulkan         = std::make_shared<UVulkanProxy>();
     Vulkan->Device = std::static_pointer_cast<VulkanRHI>(m_rhi)->m_device;
     Vulkan->Gpu    = std::static_pointer_cast<VulkanRHI>(m_rhi)->m_physical_device;
@@ -83,11 +84,11 @@ void URenderSystem::initialize(FRenderSystemInitInfo init_info)
 
     // initialize render pipeline
     FRenderPipelineInitInfo pipeline_init_info;
-    pipeline_init_info.enable_fxaa     = global_rendering_res.m_enable_fxaa;
     pipeline_init_info.render_resource = m_render_resource;
 
     m_render_pipeline        = std::make_shared<URenderPipeline>();
     m_render_pipeline->m_rhi = m_rhi;
+    m_render_pipeline->Vulkan = Vulkan;
     m_render_pipeline->initialize(pipeline_init_info);
 
     // descriptor set layout in main camera pass will be used when uploading resource

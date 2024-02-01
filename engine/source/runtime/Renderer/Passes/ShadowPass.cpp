@@ -46,15 +46,14 @@ namespace Piccolo
     void UShadowPass::setupAttachments()
     {
         // 俩附件 颜色和深度
-
         //颜色格式32位R
         FVulkanFrameBufferAttachment Attachment_0;
         Attachment_0.Format = VK_FORMAT_R32_SFLOAT;
         Attachment_0.Width = Attachment_0.Height = Proxy.FrameBuffer.Height; //宽高一样
-        FVulkanRHIUtility::CreateFrameAttachment(
+        FVulkanUtility::CreateFrameAttachment(
             Attachment_0,
-            m_rhi->m_device,
-            m_rhi->m_physical_device,
+            Vulkan->Device,
+            Vulkan->Gpu,
             VK_IMAGE_TILING_OPTIMAL,
             VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, //用于采样和Ps输出--即shader的输入输出
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,                 //仅显卡可访问
@@ -66,7 +65,7 @@ namespace Piccolo
         FVulkanFrameBufferAttachment Attachment_1;
         Attachment_1.Format = (VkFormat)m_rhi->getDepthImageInfo().depth_image_format;
         Attachment_1.Width = Attachment_1.Height = Proxy.FrameBuffer.Height;
-        FVulkanRHIUtility::CreateFrameAttachment(
+        FVulkanUtility::CreateFrameAttachment(
             Attachment_1,
             m_rhi->m_device,
             m_rhi->m_physical_device,

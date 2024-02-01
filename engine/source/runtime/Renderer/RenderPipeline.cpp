@@ -29,6 +29,7 @@ namespace Piccolo
         FRenderPassCommonInfo pass_common_info;
         pass_common_info.rhi             = m_rhi;
         pass_common_info.render_resource = init_info.render_resource;
+        pass_common_info.Vulkan = Vulkan;
 
         m_point_light_shadow_pass->setCommonInfo(pass_common_info);
         m_shadow_pass->setCommonInfo(pass_common_info);
