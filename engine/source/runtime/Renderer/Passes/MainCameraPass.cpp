@@ -333,8 +333,8 @@ namespace Piccolo
         swapchain_image_attachment_description.finalLayout    = RHI_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 
-        //render pass的7个subpass对应的描述
-        //  ----------------------------------- 创建共7个subpass -------------------------------
+        //render pass的6个subpass对应的描述
+        //  ----------------------------------- 创建共6个subpass -------------------------------
         // subpass desc需要4类的attachment, 有input, color, depth, Preserve
         // input是输入附件, 可以读取数据
         // color是输出附件, 可以写入数据

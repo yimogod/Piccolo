@@ -238,10 +238,12 @@ namespace Piccolo
         VkCommandPool        m_command_pools[k_max_frames_in_flight];
         VkCommandBuffer      m_vk_command_buffers[k_max_frames_in_flight];
 
-        //接受vkAcquireNextImageKHR通知可以渲染的信号量
-        VkSemaphore          m_image_available_for_render_semaphores[k_max_frames_in_flight];
-        //发送完成渲染的信号量
-        VkSemaphore          m_image_finished_for_presentation_semaphores[k_max_frames_in_flight];
+        //展示完成. 可以获取下一个swapchain buffer了.
+        VkSemaphore          PresentCompleteSemaphores[k_max_frames_in_flight];
+        //绘制完成. Presention等待的信号
+        VkSemaphore          DrawingCompleteSemaphore[k_max_frames_in_flight];
+
+
         //发送完成贴图拷贝的信号量
         RHISemaphore*        m_image_available_for_texturescopy_semaphores[k_max_frames_in_flight];
         VkFence              m_is_frame_in_flight_fences[k_max_frames_in_flight];

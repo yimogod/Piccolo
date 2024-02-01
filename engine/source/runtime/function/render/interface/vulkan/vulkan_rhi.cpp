@@ -370,7 +370,7 @@ namespace Piccolo
             vkAcquireNextImageKHR(m_device,
                                   m_swapchain,
                                   UINT64_MAX,
-                                  m_image_available_for_render_semaphores[m_current_frame_index],
+                                  PresentCompleteSemaphores[m_current_frame_index],
                                   VK_NULL_HANDLE,
                                   &m_current_swapchain_image_index);
 
@@ -390,12 +390,12 @@ namespace Piccolo
             VkSubmitInfo         submit_info   = {};
             submit_info.sType                  = VK_STRUCTURE_TYPE_SUBMIT_INFO;
             submit_info.waitSemaphoreCount     = 1;
-            submit_info.pWaitSemaphores        = &m_image_available_for_render_semaphores[m_current_frame_index];
+            submit_info.pWaitSemaphores        = &PresentCompleteSemaphores[m_current_frame_index];
             submit_info.pWaitDstStageMask      = wait_stages;
             submit_info.commandBufferCount     = 0;
-            submit_info.pCommandBuffers        = NULL;
+            submit_info.pCommandBuffers        = nullptr;
             submit_info.signalSemaphoreCount   = 0;
-            submit_info.pSignalSemaphores      = NULL;
+            submit_info.pSignalSemaphores      = nullptr;
 
 
             VkResult res_queue_submit =
@@ -436,8 +436,6 @@ namespace Piccolo
 
     void VulkanRHI::submitRendering(std::function<void()> passUpdateAfterRecreateSwapchain)
     {
-        //提交渲染队列
-
         // end command buffer
         VkResult res_end_command_buffer = _vkEndCommandBuffer(m_vk_command_buffers[m_current_frame_index]);
         if (VK_SUCCESS != res_end_command_buffer)
@@ -446,42 +444,47 @@ namespace Piccolo
             return;
         }
 
-        VkSemaphore semaphores[2] = { ((VulkanSemaphore*)m_image_available_for_texturescopy_semaphores[m_current_frame_index])->getResource(),
-                                     m_image_finished_for_presentation_semaphores[m_current_frame_index] };
+        //提交渲染队列
+        //重置fence
+        VkResult res_reset_fences = _vkResetFences(m_device, 1, &m_is_frame_in_flight_fences[m_current_frame_index]);
+        if (VK_SUCCESS != res_reset_fences)
+        {
+            LOG_ERROR("_vkResetFences failed!");
+            return;
+        }
+
+        LOG_WARN("~~~~~~~~~~~~~~~~~");
+
+        //VkSemaphore semaphores[2] = { ((VulkanSemaphore*)m_image_available_for_texturescopy_semaphores[m_current_frame_index])->getResource(),
+                                     //DrawingCompleteSemaphore[m_current_frame_index] };
 
         // submit command buffer
         VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
         VkSubmitInfo         submit_info   = {};
         submit_info.sType                  = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submit_info.waitSemaphoreCount     = 1;
-        submit_info.pWaitSemaphores        = &m_image_available_for_render_semaphores[m_current_frame_index];
+        submit_info.pWaitSemaphores        = &PresentCompleteSemaphores[m_current_frame_index];
         submit_info.pWaitDstStageMask      = wait_stages;
         submit_info.commandBufferCount     = 1;
         submit_info.pCommandBuffers        = &m_vk_command_buffers[m_current_frame_index];
-        submit_info.signalSemaphoreCount = 2;
-        submit_info.pSignalSemaphores = semaphores;
+        submit_info.signalSemaphoreCount = 1;
+        submit_info.pSignalSemaphores = &DrawingCompleteSemaphore[m_current_frame_index];
 
-        VkResult res_reset_fences = _vkResetFences(m_device, 1, &m_is_frame_in_flight_fences[m_current_frame_index]);
-
-        if (VK_SUCCESS != res_reset_fences)
-        {
-            LOG_ERROR("_vkResetFences failed!");
-            return;
-        }
         VkResult res_queue_submit =
             vkQueueSubmit(((VulkanQueue*)m_graphics_queue)->getResource(), 1, &submit_info, m_is_frame_in_flight_fences[m_current_frame_index]);
-        
         if (VK_SUCCESS != res_queue_submit)
         {
             LOG_ERROR("vkQueueSubmit failed!");
             return;
         }
 
+        LOG_WARN("~~~~~~~~~~~~~~~~~22222");
+
         // 展示图像
         VkPresentInfoKHR present_info   = {};
         present_info.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         present_info.waitSemaphoreCount = 1;
-        present_info.pWaitSemaphores    = &m_image_finished_for_presentation_semaphores[m_current_frame_index];
+        present_info.pWaitSemaphores    = &DrawingCompleteSemaphore[m_current_frame_index];
         present_info.swapchainCount     = 1;
         present_info.pSwapchains        = &m_swapchain;
         present_info.pImageIndices      = &m_current_swapchain_image_index;
@@ -501,6 +504,7 @@ namespace Piccolo
             }
         }
 
+        //下一帧
         m_current_frame_index = (m_current_frame_index + 1) % k_max_frames_in_flight;
     }
 
@@ -2669,10 +2673,10 @@ namespace Piccolo
         {
             m_image_available_for_texturescopy_semaphores[i] = new VulkanSemaphore();
             if (vkCreateSemaphore(
-                    m_device, &semaphore_create_info, nullptr, &m_image_available_for_render_semaphores[i]) !=
+                    m_device, &semaphore_create_info, nullptr, &PresentCompleteSemaphores[i]) !=
                     VK_SUCCESS ||
                 vkCreateSemaphore(
-                    m_device, &semaphore_create_info, nullptr, &m_image_finished_for_presentation_semaphores[i]) !=
+                    m_device, &semaphore_create_info, nullptr, &DrawingCompleteSemaphore[i]) !=
                     VK_SUCCESS ||
                 vkCreateSemaphore(
                     m_device, &semaphore_create_info, nullptr, &(((VulkanSemaphore*)m_image_available_for_texturescopy_semaphores[i])->getResource())) !=
