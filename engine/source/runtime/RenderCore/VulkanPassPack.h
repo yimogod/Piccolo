@@ -7,10 +7,10 @@
 // 一个RenderPass
 // 一套描述符集
 // 一套Vulkan管线
-class UVulkanPassProxy
+class UVulkanPassPack
 {
 public:
-    UVulkanPassProxy() = default;
+    UVulkanPassPack() = default;
 
     //方便调用, 提供了原始vk的接口
     VkPipeline& GetVkPipeline(uint32_t Index) { return Pipelines[Index].GetPipeline(); }

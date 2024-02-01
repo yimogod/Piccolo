@@ -1,9 +1,9 @@
 #pragma once
 
-#include "runtime/function/render/render_common.h"
-#include "RenderPassBase.h"
+#include "RenderCore/VulkanPassPack.h"
 #include "RenderCore/VulkanProxy.h"
-#include "RenderCore/VulkanPassProxy.h"
+#include "RenderPassBase.h"
+#include "runtime/function/render/render_common.h"
 #include "runtime/function/render/render_resource.h"
 
 #include <vulkan/vulkan.h>
@@ -123,7 +123,7 @@ namespace Piccolo
 
     protected:
         // renderpass的vulkan数据
-        UVulkanPassProxy Proxy;
+        UVulkanPassPack               Proxy;
         std::shared_ptr<UVulkanProxy> Vulkan;
     private:
     };
