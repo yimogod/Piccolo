@@ -26,15 +26,19 @@ namespace Piccolo
         // shader的输入imageview/buffer是通过描述符集绑定的
         // shader的输出是subpass输出到Attachment附件的. 而这些Attachment会根据索引引用到FrameBuffer开辟的ImageView
         SetupAttachments();
+
         //创建了1个renderpass, 包含7个subpass
         // 7个subpass对应了7个pipline, 其中4个在本类创建. 另外3个有独立的pass文件. color grading, tone maping, combine
         // ui
         //TODO 把非本pass关心的给移出去
         SetupRenderPass();
+
+
         SetupDescriptorSetLayout();
         //创建了多个管线, pipeline和subpass一一对应
         SetupPipelines();
         SetupDescriptorSet();
+
         SetupFramebufferDescriptorSet();
         SetupSwapchainFramebuffers();
     }
@@ -53,6 +57,7 @@ namespace Piccolo
     {
         //gbuffer用到的5个缓冲区 + 后处理用到的2个
         //所以本pass总共用到了7个附件!!
+        //TODO 之后会把后处理的pass拆出去
         Framebuffer.attachments.resize(E_main_camera_pass_custom_attachment_count +
                                          E_main_camera_pass_post_process_attachment_count);
 
@@ -201,7 +206,7 @@ namespace Piccolo
         // 重要!!!这些Attachment关联的imageview是pixel shader进行输出的.
         //       也就是说FrameBuffer里面包含的image都是ps的输出
         //       也因此clear value对应的就是这些ps要输出的imageview. clear了才好重新写入.
-        //       但这些被写入的imageview, 可以作为其他pass的uniform使用
+        //       但这些被写入的imageview, 可以作为其他pass的uniform/sampler使用
         // 2. 根据不同的 VkAttachmentDescription 创建 VkAttachmentReference 数组
         // 3. 根据VkAttachmentReference 创建 Subpass
         // 4. 设置SubPass依赖关系
@@ -697,7 +702,7 @@ namespace Piccolo
             }
         }
 
-        //_mesh_global. 7个绑定, mesh global, 和mesh.frag的set=0的8个绑定对应上了
+        //_mesh_global. 7个绑定, mesh global, 和mesh.frag的set=0的7个绑定对应上了
         {
             RHIDescriptorSetLayoutBinding mesh_global_layout_bindings[7];
 

@@ -4,8 +4,8 @@
 
 namespace Piccolo
 {
-    //引擎逻辑段的管线, 概念更广义. 表示整个引擎的渲染的全过程, 和Vulkan的Pipeline完全不一样
-    class URenderPipeline : public URenderPipelineBase
+    //引擎逻辑段的渲染器. 可以类比为UE的render线程的MobileRenderer
+    class USceneRenderer : public URenderPipelineBase
     {
     public:
         virtual void initialize(FRenderPipelineInitInfo init_info) override final;

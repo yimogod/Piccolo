@@ -1,4 +1,4 @@
-#include "RenderPipeline.h"
+#include "SceneRenderer.h"
 
 #include "Passes/MainCameraPass.h"
 #include "Passes/ShadowPass.h"
@@ -15,7 +15,7 @@
 
 namespace Piccolo
 {
-    void URenderPipeline::initialize(FRenderPipelineInitInfo init_info)
+    void USceneRenderer::initialize(FRenderPipelineInitInfo init_info)
     {
         m_shadow_pass             = std::make_shared<UShadowPass>();
         m_main_camera_pass        = std::make_shared<UMainCameraPass>();
@@ -77,7 +77,7 @@ namespace Piccolo
         m_combine_ui_pass->initialize(&combine_ui_init_info);
     }
 
-    void URenderPipeline::deferredRender(std::shared_ptr<RHI> rhi, std::shared_ptr<RenderResourceBase> render_resource)
+    void USceneRenderer::deferredRender(std::shared_ptr<RHI> rhi, std::shared_ptr<RenderResourceBase> render_resource)
     {
         //每帧进行调用
 
@@ -92,7 +92,7 @@ namespace Piccolo
 
         vulkan_rhi->resetCommandPool();
 
-        bool recreate_swapchain = vulkan_rhi->prepareBeforePass(std::bind(&URenderPipeline::passUpdateAfterRecreateSwapchain, this));
+        bool recreate_swapchain = vulkan_rhi->prepareBeforePass(std::bind(&USceneRenderer::passUpdateAfterRecreateSwapchain, this));
         if (recreate_swapchain)return;
 
         //平行光阴影pass
@@ -112,10 +112,10 @@ namespace Piccolo
                    
         g_runtime_global_context.m_debugdraw_manager->draw(vulkan_rhi->m_current_swapchain_image_index);
 
-        vulkan_rhi->submitRendering(std::bind(&URenderPipeline::passUpdateAfterRecreateSwapchain, this));
+        vulkan_rhi->submitRendering(std::bind(&USceneRenderer::passUpdateAfterRecreateSwapchain, this));
     }
 
-    void URenderPipeline::passUpdateAfterRecreateSwapchain()
+    void USceneRenderer::passUpdateAfterRecreateSwapchain()
     {
         UMainCameraPass&   main_camera_pass   = *(static_cast<UMainCameraPass*>(m_main_camera_pass.get()));
         ColorGradingPass& color_grading_pass = *(static_cast<ColorGradingPass*>(m_color_grading_pass.get()));
@@ -133,13 +133,13 @@ namespace Piccolo
         g_runtime_global_context.m_debugdraw_manager->updateAfterRecreateSwapchain();
     }
 
-    void URenderPipeline::setAxisVisibleState(bool state)
+    void USceneRenderer::setAxisVisibleState(bool state)
     {
         UMainCameraPass& main_camera_pass = *(static_cast<UMainCameraPass*>(m_main_camera_pass.get()));
         main_camera_pass.m_is_show_axis  = state;
     }
 
-    void URenderPipeline::setSelectedAxis(size_t selected_axis)
+    void USceneRenderer::setSelectedAxis(size_t selected_axis)
     {
         UMainCameraPass& main_camera_pass = *(static_cast<UMainCameraPass*>(m_main_camera_pass.get()));
         main_camera_pass.m_selected_axis = selected_axis;

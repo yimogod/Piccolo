@@ -2,8 +2,6 @@
 
 #include "core/log/log_system.h"
 
-#include "runtime/engine.h"
-
 #include "runtime/platform/file_service/file_service.h"
 
 #include "runtime/resource/asset_manager/asset_manager.h"
@@ -16,8 +14,6 @@
 #include "runtime/function/render/render_debug_config.h"
 #include "runtime/Renderer/RenderSystem.h"
 #include "runtime/function/render/window_system.h"
-
-#include "runtime/Renderer/RenderSystem.h"
 
 namespace Piccolo
 {

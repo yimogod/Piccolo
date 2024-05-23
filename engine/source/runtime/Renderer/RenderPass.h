@@ -18,6 +18,7 @@ namespace Piccolo
 {
     class VulkanRHI;
 
+    //basepass下用到的所有附件
     enum
     {
         E_main_camera_pass_gbuffer_a                     = 0,
@@ -34,6 +35,7 @@ namespace Piccolo
         E_main_camera_pass_attachment_count              = 9,
     };
 
+    //basepass的所有subpass
     enum
     {
         E_main_camera_subpass_basepass = 0,

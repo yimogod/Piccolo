@@ -1,6 +1,5 @@
 #include "ShadowPass.h"
 
-#include "runtime/function/render/render_helper.h"
 #include "runtime/function/render/render_mesh.h"
 #include "runtime/function/render/interface/vulkan/vulkan_rhi.h"
 #include "runtime/function/render/render_common.h"
