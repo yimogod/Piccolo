@@ -20,15 +20,12 @@ public:
     //用于兼容现有引擎使用方式, 在外部已经创建了Buffer
     explicit FVulkanImage(VkImage& InBuffer) { RawImage = InBuffer; }
 
-    VkImage& GetVkImage() { return RawImage; }
+    VkImage& GetImage() { return RawImage; }
 
     //创建实际的VulkanImage对象
     void CreateImage(FVulkanDevice& Device);
 
     void Destroy(FVulkanDevice& Device);
-
-    //图片格式
-    VkFormat Format = VkFormat::VK_FORMAT_B8G8R8A8_UINT;
 
     //经过优化的排列方式
     VkImageTiling Tiling = VkImageTiling::VK_IMAGE_TILING_OPTIMAL;
@@ -39,11 +36,17 @@ public:
     //图片的内存性质, 默认是显存
     VkMemoryPropertyFlags MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 protected:
+    //图片数据
     VkImage RawImage = VK_NULL_HANDLE;
+    //存放图片的显存
     VkDeviceMemory RawMemory = VK_NULL_HANDLE;
-    //缓存当前buff的大小
+
+    //开辟的image的尺寸. 比如平行光的shadow map, 就开辟了4096*4096.
     uint32_t Width = 0;
     uint32_t Height = 0;
+
+    //图片格式
+    VkFormat Format = VkFormat::VK_FORMAT_B8G8R8A8_UINT;
 
     //如果是对象数组的话, 有几层
     uint32_t ArrayLayers = 1;

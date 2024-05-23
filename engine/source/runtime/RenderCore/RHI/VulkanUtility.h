@@ -64,5 +64,8 @@ public:
                                       // image view的层数, 还有一个baselayer, 是起始层数. 我没放开参数. 给了0
                                       uint32_t ArrayLayers = 1
                                       );
+
+    //查找默认支持的深度贴图的格式
+    static VkFormat FindDepthFormat(VkPhysicalDevice GPU);
 };
 

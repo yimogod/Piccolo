@@ -11,8 +11,8 @@
 
 void FVulkanImage::Destroy(FVulkanDevice& Device)
 {
-    Device.DestroyImage(RawImage);
-    Device.FreeMemory(RawMemory);
+    vkDestroyImage(Device.GetDevice(), RawImage, nullptr);
+    vkFreeMemory(Device.GetDevice(), RawMemory, nullptr);
 }
 
 void FVulkanImage::CreateImage(FVulkanDevice& Device)
@@ -33,7 +33,7 @@ void FVulkanImage::CreateImage(FVulkanDevice& Device)
     ImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
     ImageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    if (Device.CreateImage(&ImageInfo, &RawImage) != VK_SUCCESS) {
+    if (vkCreateImage(Device.GetDevice(), &ImageInfo, nullptr, &RawImage) != VK_SUCCESS) {
         throw std::runtime_error("failed to create image!");
     }
 
@@ -103,13 +103,13 @@ void FVulkanImageView::InternalCreateImageView(FVulkanDevice& Device, VkImageVie
     CreateInfo.subresourceRange.baseArrayLayer = 0;
     CreateInfo.subresourceRange.layerCount = Image.ArrayLayers;
 
-    if (Device.CreateImageView(&CreateInfo, &RawView) != VK_SUCCESS) {
+    if (vkCreateImageView(Device.GetDevice(), &CreateInfo, nullptr, &RawView)!= VK_SUCCESS) {
         throw std::runtime_error("failed to create image views!");
     }
 }
 
 void FVulkanImageView::Destroy(FVulkanDevice& Device)
 {
-    Device.DestroyImageView(RawView);
+    vkDestroyImageView(Device.GetDevice(), RawView, nullptr);
 }
 

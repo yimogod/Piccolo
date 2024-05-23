@@ -19,18 +19,15 @@ public:
     VkDevice& GetDevice() { return Device; }
     VkPhysicalDevice& GetGPU() { return GPU; }
 
-    //创建图片
-    VkResult CreateImage(VkImageCreateInfo* pCreateInfo, VkImage* pImage);
-    //销毁图片
-    void DestroyImage(VkImage& Image);
+    void CreateDevice();
 
     //创建图片
     VkResult CreateImageView(VkImageViewCreateInfo* pCreateInfo, VkImageView* pView);
     //销毁图片视图
     void DestroyImageView(VkImageView& View);
 
-    //释放内存
-    void FreeMemory(VkDeviceMemory& Memory);
+protected:
+    void CreateInstance();
 
 private:
     VkDevice Device;

@@ -14,6 +14,9 @@ public:
     VkPhysicalDevice Gpu = VK_NULL_HANDLE;
     VkDescriptorPool DescriptorPool = VK_NULL_HANDLE;
 
+    //默认的深度格式
+    VkFormat DepthFormat = VK_FORMAT_D32_SFLOAT;
+
     //初始化vulkan系统. 比如
     // 1. 描述符池子,
     void Initialized();

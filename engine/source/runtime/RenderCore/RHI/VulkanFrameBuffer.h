@@ -14,14 +14,14 @@ struct FVulkanFrameBufferAttachment
     uint32_t Height = 0;
 
     //对应的如何使用图片的View
-    VkImageView    View;
+    VkImageView View;
 
     //图片数据
-    VkImage        Image;
+    VkImage Image;
     //存放图片的显存
     VkDeviceMemory Mem;
     //图片格式
-    VkFormat       Format;
+    VkFormat Format = VK_FORMAT_UNDEFINED;
 };
 
 //framebuffer有两种使用情境

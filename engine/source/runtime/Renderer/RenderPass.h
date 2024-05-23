@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RenderCore/VulkanPassPack.h"
+#include "RenderCore/VulkanPassPacket.h"
 #include "RenderCore/VulkanProxy.h"
 #include "RenderPassBase.h"
 #include "runtime/function/render/render_common.h"
@@ -132,7 +132,9 @@ namespace Piccolo
 
     protected:
         // renderpass的vulkan数据
-        UVulkanPassPack               Proxy;
+        FVulkanPassPacket Packet;
+
+        // 由SceneRender传入, 方便直接使用数据
         std::shared_ptr<UVulkanProxy> Vulkan;
     private:
     };

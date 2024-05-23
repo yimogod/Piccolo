@@ -13,8 +13,8 @@ namespace Piccolo
     {
         URenderPass::initialize(nullptr);
 
-    	Proxy.FrameBuffer.Width  = s_directional_light_shadow_map_dimension;
-        Proxy.FrameBuffer.Height = s_directional_light_shadow_map_dimension;
+    	Packet.FrameBuffer.Width  = s_directional_light_shadow_map_dimension;
+        Packet.FrameBuffer.Height = s_directional_light_shadow_map_dimension;
 
         //根据之前的经验, 这几个创建是由顺序依赖的
         setupAttachments();
@@ -24,11 +24,13 @@ namespace Piccolo
         //shader相关, 和后面的渲染管线有联系
         setupDescriptorSetLayout();
     }
+
     void UShadowPass::postInitialize()
     {
         setupPipelines();
         setupDescriptorSet();
     }
+
     void UShadowPass::preparePassData(std::shared_ptr<RenderResourceBase> render_resource)
     {
         const RenderResource* vulkan_resource = static_cast<const RenderResource*>(render_resource.get());
@@ -48,7 +50,8 @@ namespace Piccolo
         //颜色格式32位R
         FVulkanFrameBufferAttachment Attachment_0;
         Attachment_0.Format = VK_FORMAT_R32_SFLOAT;
-        Attachment_0.Width = Attachment_0.Height = Proxy.FrameBuffer.Height; //宽高一样
+        //阴影贴图的宽高一样
+        Attachment_0.Width = Attachment_0.Height = Packet.FrameBuffer.Height; //宽高一样
         FVulkanUtility::CreateFrameAttachment(
             Attachment_0,
             Vulkan->Device,
@@ -58,12 +61,12 @@ namespace Piccolo
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,                 //仅显卡可访问
             VK_IMAGE_ASPECT_COLOR_BIT                              // Color Bit
         );
-        Proxy.FrameBuffer.AddFrameAttachment(Attachment_0);
+        Packet.FrameBuffer.AddFrameAttachment(Attachment_0);
 
         // depth
         FVulkanFrameBufferAttachment Attachment_1;
-        Attachment_1.Format = (VkFormat)m_rhi->getDepthImageInfo().depth_image_format;
-        Attachment_1.Width = Attachment_1.Height = Proxy.FrameBuffer.Height;
+        Attachment_1.Format = Vulkan->DepthFormat;
+        Attachment_1.Width = Attachment_1.Height = Packet.FrameBuffer.Height;
         FVulkanUtility::CreateFrameAttachment(
             Attachment_1,
             m_rhi->m_device,
@@ -74,7 +77,7 @@ namespace Piccolo
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, //仅显卡可访问
             VK_IMAGE_ASPECT_DEPTH_BIT            // Depth Bit
         );
-        Proxy.FrameBuffer.AddFrameAttachment(Attachment_1);
+        Packet.FrameBuffer.AddFrameAttachment(Attachment_1);
 
 
         ////////////////////////////// TODO 兼容代码  ///////////////////////
@@ -82,7 +85,7 @@ namespace Piccolo
         Framebuffer.attachments.resize(2);
 
         // color
-        FVulkanFrameBufferAttachment Att1   = Proxy.FrameBuffer.GetAttachment(0);
+        FVulkanFrameBufferAttachment Att1   = Packet.FrameBuffer.GetAttachment(0);
         Framebuffer.attachments[0].format = (RHIFormat)Att1.Format;
         
         auto image = new VulkanImage();
@@ -99,7 +102,7 @@ namespace Piccolo
 
 
         // depth
-        FVulkanFrameBufferAttachment Att2   = Proxy.FrameBuffer.GetAttachment(1);
+        FVulkanFrameBufferAttachment Att2   = Packet.FrameBuffer.GetAttachment(1);
         Framebuffer.attachments[1].format = (RHIFormat)Att2.Format;
 
         auto image2 = new VulkanImage();
@@ -117,24 +120,24 @@ namespace Piccolo
     void UShadowPass::setupRenderPass()
     {
         //所有的renderpass用到了两个附件, 就是上面创建的一个深度, 一个color附件
-        Proxy.RenderPass.SetAttachmentNum(2);
-        auto& AttachDesc = Proxy.RenderPass.GetAttachmentDesc();
+        Packet.RenderPass.SetAttachmentNum(2);
+        auto& AttachDesc = Packet.RenderPass.GetAttachmentDesc();
 
         //阴影(还是着色?得看shader的实现)的颜色R16
-        AttachDesc.SetFormat(0, Proxy.FrameBuffer.GetAttachment(0).Format);
+        AttachDesc.SetFormat(0, Packet.FrameBuffer.GetAttachment(0).Format);
         //这个附件会清理chip memory, 且将chip数据写入到system memory
         AttachDesc.SetLoadAndStore(0, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE);
         AttachDesc.SetLayout(0, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         //影子(还是着色?)深度
-        AttachDesc.SetFormat(1, Proxy.FrameBuffer.GetAttachment(1).Format);
+        AttachDesc.SetFormat(1, Packet.FrameBuffer.GetAttachment(1).Format);
         //深度的话,也会清理chip memory, 但不会回写到system memory -- 根据UE, depth buffer确实也不会写回system memory
         AttachDesc.SetLoadAndStore(1, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE);
         AttachDesc.SetLayout(1, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
         //就一个pass
-        Proxy.RenderPass.SetSubPassNum(1);
-        FVulkanSubPass& SubPass = Proxy.RenderPass.GetSubPass(0);
+        Packet.RenderPass.SetSubPassNum(1);
+        FVulkanSubPass& SubPass = Packet.RenderPass.GetSubPass(0);
 
         //两个附件, 一个ColorAttachment(输出), 一个DepthAttachment(深度)
         SubPass.SetReferenceNum(0, 1, 1);
@@ -142,8 +145,8 @@ namespace Piccolo
         SubPass.SetDepthReference(1);
         SubPass.SetupSubPass();
 
-        Proxy.RenderPass.SetDependencyNum(1);
-        auto& Dependency = Proxy.RenderPass.GetDependency();
+        Packet.RenderPass.SetDependencyNum(1);
+        auto& Dependency = Packet.RenderPass.GetDependency();
         Dependency.SetSubpass(0, VK_SUBPASS_EXTERNAL, 0);
         //就一个subpass, 依赖于之前pass的输出. 然后目标是自己的pass的输出
         Dependency.SetStageMask(
@@ -156,34 +159,34 @@ namespace Piccolo
                                  0); //不访问
         Dependency.SetFlag(0, 0); // NOT BY REGION
 
-        Proxy.RenderPass.CreateRenderPass(m_rhi->m_device);
+        Packet.RenderPass.CreateRenderPass(m_rhi->m_device);
 
 
 
         //TODO 兼容旧引擎
 		auto pRenderPass = new VulkanRenderPass();
-        pRenderPass->setResource(Proxy.RenderPass.GetVKRenderPass());
+        pRenderPass->setResource(Packet.RenderPass.GetVKRenderPass());
         Framebuffer.render_pass = pRenderPass;
     }
     void UShadowPass::setupFramebuffer()
     {
         //使用initialize方法中手动创建的两个image view. 即自己已存的两个view
-        Proxy.FrameBuffer.CreateFrameBuffer(m_rhi->m_device, Proxy.RenderPass.GetVKRenderPass());
+        Packet.FrameBuffer.CreateFrameBuffer(m_rhi->m_device, Packet.RenderPass.GetVKRenderPass());
 
         //TODO 兼容旧引擎
     	Framebuffer.framebuffer = new VulkanFramebuffer();
-        ((VulkanFramebuffer*)Framebuffer.framebuffer)->setResource(Proxy.FrameBuffer.GetFrameBuffer());
+        ((VulkanFramebuffer*)Framebuffer.framebuffer)->setResource(Packet.FrameBuffer.GetFrameBuffer());
     }
     void UShadowPass::setupDescriptorSetLayout()
     {
         //设置描述符布局
-        Proxy.DescriptorSets.resize(1);
+        Packet.DescriptorSets.resize(1);
 
         // 3个binding, 对应shader中的layout(set = 0, binding = 0/1/2)
         // VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC 可被动态写入的buffer, 允许单个set中的单个缓冲区高频地更新
         
         // 3个set都用于顶点阶段, 在mesh_directional_light_shadow.vert中分别是mvp, meshinstance, joint_matrices(动画)
-        auto& Set = Proxy.DescriptorSets[0];
+        auto& Set = Packet.DescriptorSets[0];
         //都用于顶点shader
         Set.SetBindingNum(3);
         Set.SetLayoutBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);
@@ -195,16 +198,16 @@ namespace Piccolo
         //TODO 兼容旧引擎
         m_descriptor_infos.resize(1);
         m_descriptor_infos[0].layout = new VulkanDescriptorSetLayout();
-        ((VulkanDescriptorSetLayout*)m_descriptor_infos[0].layout)->setResource(Proxy.DescriptorSets[0].GetLayout());
+        ((VulkanDescriptorSetLayout*)m_descriptor_infos[0].layout)->setResource(Packet.DescriptorSets[0].GetLayout());
     }
     void UShadowPass::setupPipelines()
     {
-        Proxy.Pipelines.resize(1);
-        FVulkanPipeline& Pipeline = Proxy.Pipelines[0];
+        Packet.Pipelines.resize(1);
+        FVulkanPipeline& Pipeline = Packet.Pipelines[0];
 
         //设置管线布局, 管线布局用到了两个描述集布局
         std::vector<VkDescriptorSetLayout> DescLayouts = {
-            Proxy.GetVkDescriptorLayout(0), 
+            Packet.GetVkDescriptorLayout(0), 
             ((VulkanDescriptorSetLayout*)m_per_mesh_layout)->getResource()
         };
         Pipeline.CreateLayout(m_rhi->m_device, DescLayouts);
@@ -237,8 +240,8 @@ namespace Piccolo
         State.SetVertexAttributeDescription(VertexAttributes);
 
         //设置pipeline的个性化数据
-        VkViewport viewport = Proxy.FrameBuffer.GetFullViewport();
-        VkRect2D   scissor  = Proxy.FrameBuffer.GetFullScissor();
+        VkViewport viewport = Packet.FrameBuffer.GetFullViewport();
+        VkRect2D   scissor  = Packet.FrameBuffer.GetFullScissor();
         State.SetViewportState(viewport, scissor);
         State.SetRasterFrontFace(VK_FRONT_FACE_COUNTER_CLOCKWISE); //逆时针正方向
 
@@ -254,7 +257,7 @@ namespace Piccolo
         State.SetupNullDynamicState();
 
         //创建管线
-        Pipeline.CreatePipeline(m_rhi->m_device, Proxy.RenderPass.GetVKRenderPass(), 0, shader_stages, State);
+        Pipeline.CreatePipeline(m_rhi->m_device, Packet.RenderPass.GetVKRenderPass(), 0, shader_stages, State);
 
 
         //TODO 兼容旧数据
@@ -272,7 +275,7 @@ namespace Piccolo
     //创建描述符集, 并把write和描述符集绑定起来
     void UShadowPass::setupDescriptorSet()
     {
-        auto& Set = Proxy.DescriptorSets[0];
+        auto& Set = Packet.DescriptorSets[0];
         VulkanDescriptorPool* Pool  = (VulkanDescriptorPool*)m_rhi->m_descriptor_pool;
         VkDescriptorPool      VPool = Pool->getResource();
         Set.CreateDescriptorSet(m_rhi->m_device, VPool);
@@ -306,7 +309,7 @@ namespace Piccolo
         // TODO 兼容旧引擎
         m_descriptor_infos[0].descriptor_set = new VulkanDescriptorSet();
         ((VulkanDescriptorSet*)m_descriptor_infos[0].descriptor_set)
-            ->setResource(Proxy.DescriptorSets[0].GetDescriptorSet());
+            ->setResource(Packet.DescriptorSets[0].GetDescriptorSet());
     }
     void UShadowPass::drawModel()
     {
@@ -343,9 +346,9 @@ namespace Piccolo
         FVulkanCommandBuffer CB = FVulkanCommandBuffer(RawCommandBuffer);
         // Directional Light Shadow begin pass
         {
-            Proxy.FrameBuffer.SetClearColorValue(0, {1.0f});
-            Proxy.FrameBuffer.SetClearDepthValue(1, {1.0f, 0});
-            CB.BeginRenderPass(Proxy.FrameBuffer, Proxy.RenderPass, Proxy.FrameBuffer.GetFullExtent());
+            Packet.FrameBuffer.SetClearColorValue(0, {1.0f});
+            Packet.FrameBuffer.SetClearDepthValue(1, {1.0f, 0});
+            CB.BeginRenderPass(Packet.FrameBuffer, Packet.RenderPass, Packet.FrameBuffer.GetFullExtent());
 
             float color[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
             m_rhi->pushEvent(m_rhi->getCurrentCommandBuffer(), "Directional Light Shadow", color);

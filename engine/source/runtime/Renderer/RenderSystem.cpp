@@ -45,6 +45,7 @@ namespace Piccolo
         Vulkan         = std::make_shared<UVulkanProxy>();
         Vulkan->Device = std::static_pointer_cast<VulkanRHI>(m_rhi)->m_device;
         Vulkan->Gpu    = std::static_pointer_cast<VulkanRHI>(m_rhi)->m_physical_device;
+        Vulkan->Initialized();
 
         // global rendering resource
         GlobalRenderingRes global_rendering_res;
@@ -84,18 +85,18 @@ namespace Piccolo
         FRenderPipelineInitInfo pipeline_init_info;
         pipeline_init_info.render_resource = m_render_resource;
 
-        m_render_pipeline        = std::make_shared<USceneRenderer>();
-        m_render_pipeline->m_rhi = m_rhi;
-        m_render_pipeline->Vulkan = Vulkan;
-        m_render_pipeline->initialize(pipeline_init_info);
+        Renderer = std::make_shared<USceneRenderer>();
+        Renderer->m_rhi = m_rhi;
+        Renderer->Vulkan = Vulkan;
+        Renderer->initialize(pipeline_init_info);
 
         // descriptor set layout in main camera pass will be used when uploading resource
         std::static_pointer_cast<RenderResource>(m_render_resource)->m_mesh_descriptor_set_layout =
-            &static_cast<URenderPass*>(m_render_pipeline->m_main_camera_pass.get())
+            &static_cast<URenderPass*>(Renderer->m_main_camera_pass.get())
                  ->m_descriptor_infos[UMainCameraPass::LayoutType::_per_mesh]
                  .layout;
         std::static_pointer_cast<RenderResource>(m_render_resource)->m_material_descriptor_set_layout =
-            &static_cast<URenderPass*>(m_render_pipeline->m_main_camera_pass.get())
+            &static_cast<URenderPass*>(Renderer->m_main_camera_pass.get())
                  ->m_descriptor_infos[UMainCameraPass::LayoutType::_mesh_per_material]
                  .layout;
     }
@@ -117,12 +118,12 @@ namespace Piccolo
 
         // prepare pipeline's render passes data
         // 调用各个pass准备自己的数据
-        m_render_pipeline->preparePassData(m_render_resource);
+        Renderer->preparePassData(m_render_resource);
 
         g_runtime_global_context.m_debugdraw_manager->tick(delta_time);
 
         // 基类方法, 相机灯光阴影pass准备数据
-        m_render_pipeline->deferredRender(m_rhi, m_render_resource);
+        Renderer->deferredRender(m_rhi, m_render_resource);
     }
 
     void URenderSystem::clear()
@@ -145,11 +146,11 @@ namespace Piccolo
         }
         m_render_resource.reset();
 
-        if (m_render_pipeline)
+        if (Renderer)
         {
-            m_render_pipeline->clear();
+            Renderer->clear();
         }
-        m_render_pipeline.reset();
+        Renderer.reset();
     }
 
     void URenderSystem::swapLogicRenderData() { m_swap_context.swapLogicRenderData(); }
@@ -200,17 +201,17 @@ namespace Piccolo
 
         if (axis.has_value())
         {
-            std::static_pointer_cast<USceneRenderer>(m_render_pipeline)->setAxisVisibleState(true);
+            std::static_pointer_cast<USceneRenderer>(Renderer)->setAxisVisibleState(true);
         }
         else
         {
-            std::static_pointer_cast<USceneRenderer>(m_render_pipeline)->setAxisVisibleState(false);
+            std::static_pointer_cast<USceneRenderer>(Renderer)->setAxisVisibleState(false);
         }
     }
 
     void URenderSystem::setSelectedAxis(size_t selected_axis)
     {
-        std::static_pointer_cast<USceneRenderer>(m_render_pipeline)->setSelectedAxis(selected_axis);
+        std::static_pointer_cast<USceneRenderer>(Renderer)->setSelectedAxis(selected_axis);
     }
 
     GuidAllocator<GameObjectPartId>& URenderSystem::getGOInstanceIdAllocator()
@@ -230,7 +231,7 @@ namespace Piccolo
 
     void URenderSystem::initializeUIRenderBackend(WindowUI* window_ui)
     {
-        m_render_pipeline->initializeUIRenderBackend(window_ui);
+        Renderer->initializeUIRenderBackend(window_ui);
     }
 
     void URenderSystem::processSwapData()

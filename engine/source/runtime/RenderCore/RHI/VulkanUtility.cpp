@@ -1,5 +1,6 @@
 #include "VulkanUtility.h"
 #include "VulkanFrameBuffer.h"
+#include "runtime/core/base/macro.h"
 
 uint32_t FVulkanUtility::FindMemoryType(VkPhysicalDeviceMemoryProperties& MemProperties,
                                uint32_t RequiredMemoryTypeBits,
@@ -170,4 +171,25 @@ void FVulkanUtility::CreateImage(VkDevice Device,
                                          ViewType,
                                          MipLevelCount,
                                          ArrayLayers);
+ }
+
+ VkFormat FVulkanUtility::FindDepthFormat(VkPhysicalDevice GPU)
+ {
+    const std::vector<VkFormat>& candidates =
+              {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT};
+    VkFormatFeatureFlags features = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+    for (VkFormat format : candidates)
+    {
+        VkFormatProperties props;
+        vkGetPhysicalDeviceFormatProperties(GPU, format, &props);
+
+        if ((props.optimalTilingFeatures & features) == features)
+        {
+            return format;
+        }
+    }
+
+    //LOG_ERROR("findSupportedFormat failed");
+    return VkFormat();
  }

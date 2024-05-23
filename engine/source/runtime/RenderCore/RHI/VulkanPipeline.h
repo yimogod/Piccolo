@@ -130,8 +130,6 @@ private:
     //原生管线布局
     //Pipeline通过PipelineLayout, 把描述符集和Shader关联了起来
     VkPipelineLayout RawPipelineLayout = {};
-
-
 };
 
 
