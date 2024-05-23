@@ -12,21 +12,15 @@ public:
     FVulkanDevice() = default;
 
     //TODO 兼容旧引擎
-    void SetDeivce(VkDevice& InDevice){Device = InDevice;}
-    void SetGPU(VkPhysicalDevice& InGPU){GPU = InGPU;}
-    void SetInstance(VkInstance& InInstance){Instance = InInstance;}
+    void SetDevice(VkDevice& InDevice){ Device = InDevice; }
+    void SetGPU(VkPhysicalDevice& InGPU){ GPU = InGPU; }
+    void SetInstance(VkInstance& InInstance){ Instance = InInstance; }
 
     VkDevice& GetDevice() { return Device; }
     VkPhysicalDevice& GetGPU() { return GPU; }
 
     void CreateDevice();
-
-    //创建图片
-    VkResult CreateImageView(VkImageViewCreateInfo* pCreateInfo, VkImageView* pView);
-    //销毁图片视图
-    void DestroyImageView(VkImageView& View);
-
-protected:
+    protected:
     void CreateInstance();
 
 private:

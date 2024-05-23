@@ -1,5 +1,6 @@
 #pragma once
 
+#include "VulkanImage.h"
 #include "VulkanRenderPass.h"
 #include "vulkan/vulkan_core.h"
 #include <vector>
@@ -59,6 +60,7 @@ public:
     void SetCurrentBufferIndex(uint32_t Index) { CurrBufferIndex = Index; }
     //添加普通的附件. 不包含SwapChain的imageview. 交换链的imageview要通过
     void AddFrameAttachment(FVulkanFrameBufferAttachment& Attachment);
+    void AddAttachment(FVulkanImageView& Attachment);
 
     void SetFrameAttachmentNum(uint32_t Num) { CachedAttachments.resize(Num); }
     void SetFrameAttachmentFormat(uint32_t Index, VkFormat Format);
@@ -91,6 +93,10 @@ private:
     //用到的所有的帧缓冲附件. 这个附件个数和描述符集数组(即RenderPass用到的所有的附件)所有用到的个数相同
     //附件仅用于PS, 可以粗暴的将附件理解为RenderTarget
     std::vector<FVulkanFrameBufferAttachment> CachedAttachments;
+
+    //用到的所有的帧缓冲附件. 这个附件个数和描述符集数组(即RenderPass用到的所有的附件)所有用到的个数相同
+    //附件仅用于PS, 可以粗暴的将附件理解为RenderTarget
+    std::vector<FVulkanImageView> CachedAttachments2;
 
     //frame buffer对应的clear value
     std::vector<VkClearValue> ClearValues;

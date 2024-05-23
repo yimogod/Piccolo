@@ -27,6 +27,12 @@ void FVulkanFrameBuffer::AddFrameAttachment(FVulkanFrameBufferAttachment& Attach
 {
     CachedAttachments.push_back(Attachment);
 }
+
+void FVulkanFrameBuffer::AddAttachment(FVulkanImageView& Attachment)
+{
+    CachedAttachments2.push_back(Attachment);
+}
+
 void FVulkanFrameBuffer::SetFrameAttachmentFormat(uint32_t Index, VkFormat Format)
 {
     CachedAttachments[Index].Format = Format;
@@ -126,3 +132,4 @@ void FVulkanFrameBuffer::DestroyFrameBuffer(VkDevice& Device)
         vkDestroyFramebuffer(Device, FrameBuffer, nullptr);
     }
 }
+

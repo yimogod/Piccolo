@@ -48,39 +48,44 @@ namespace Piccolo
     {
         // 俩附件 颜色和深度
         //颜色格式32位R
-        FVulkanFrameBufferAttachment Attachment_0;
-        Attachment_0.Format = VK_FORMAT_R32_SFLOAT;
-        //阴影贴图的宽高一样
-        Attachment_0.Width = Attachment_0.Height = Packet.FrameBuffer.Height; //宽高一样
-        FVulkanUtility::CreateFrameAttachment(
-            Attachment_0,
-            Vulkan->Device,
-            Vulkan->Gpu,
-            VK_IMAGE_TILING_OPTIMAL,
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, //用于采样和Ps输出--即shader的输入输出
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,                 //仅显卡可访问
-            VK_IMAGE_ASPECT_COLOR_BIT                              // Color Bit
-        );
-        Packet.FrameBuffer.AddFrameAttachment(Attachment_0);
+        FVulkanImageView View_0;
+        View_0.SetSize(Packet.FrameBuffer.Width, Packet.FrameBuffer.Height);
+        View_0.SetFormat(VK_FORMAT_R32_SFLOAT);
+        View_0.SetUsage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);//用于采样和Ps输出--即shader的输入输出
+        View_0.CreateImageView_Color(Vulkan->Device2); // Color Bit
+        Packet.FrameBuffer.AddAttachment(View_0);
 
         // depth
-        FVulkanFrameBufferAttachment Attachment_1;
-        Attachment_1.Format = Vulkan->DepthFormat;
-        Attachment_1.Width = Attachment_1.Height = Packet.FrameBuffer.Height;
-        FVulkanUtility::CreateFrameAttachment(
-            Attachment_1,
-            m_rhi->m_device,
-            m_rhi->m_physical_device,
-            VK_IMAGE_TILING_OPTIMAL,
-            //用于深度附件和交换格式的中间buffer
-            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, //仅显卡可访问
-            VK_IMAGE_ASPECT_DEPTH_BIT            // Depth Bit
-        );
-        Packet.FrameBuffer.AddFrameAttachment(Attachment_1);
+        FVulkanImageView View_1;
+        View_1.SetSize(Packet.FrameBuffer.Width, Packet.FrameBuffer.Height);
+        View_1.SetFormat(Vulkan->DepthFormat);
+        View_1.SetUsage(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT);//用于采样和Ps输出--即shader的输入输出
+        View_1.CreateImageView_Depth(Vulkan->Device2); // Color Bit
+        Packet.FrameBuffer.AddAttachment(View_1);
+
+
 
 
         ////////////////////////////// TODO 兼容代码  ///////////////////////
+        FVulkanFrameBufferAttachment Attachment_0;
+        Attachment_0.Format = VK_FORMAT_R32_SFLOAT;
+        Attachment_0.Width = Attachment_0.Height = Packet.FrameBuffer.Width; //宽高一样
+        Attachment_0.Image = View_0.GetImage();
+        Attachment_0.View = View_0.GetImageView();
+        Attachment_0.Mem = View_0.GetMem();
+        Packet.FrameBuffer.AddFrameAttachment(Attachment_0);
+
+
+        FVulkanFrameBufferAttachment Attachment_1;
+        Attachment_1.Format = Vulkan->DepthFormat;
+        Attachment_1.Width = Attachment_1.Height = Packet.FrameBuffer.Height;
+        Attachment_1.Image = View_1.GetImage();
+        Attachment_1.View = View_1.GetImageView();
+        Attachment_1.Mem = View_1.GetMem();
+        Packet.FrameBuffer.AddFrameAttachment(Attachment_1);
+
+
+
         // color and depth
         Framebuffer.attachments.resize(2);
 
@@ -89,15 +94,15 @@ namespace Piccolo
         Framebuffer.attachments[0].format = (RHIFormat)Att1.Format;
         
         auto image = new VulkanImage();
-        image->setResource(Att1.Image);
+        image->setResource(View_0.GetImage());
         Framebuffer.attachments[0].image = image;
 
         auto image_view = new VulkanImageView();
-        image_view->setResource(Att1.View);
+        image_view->setResource(View_0.GetImageView());
         Framebuffer.attachments[0].view  = image_view;
 
         auto memory = new VulkanDeviceMemory();
-        memory->setResource(Att1.Mem);
+        memory->setResource(View_0.GetMem());
         Framebuffer.attachments[0].mem = memory;
 
 
@@ -106,15 +111,15 @@ namespace Piccolo
         Framebuffer.attachments[1].format = (RHIFormat)Att2.Format;
 
         auto image2 = new VulkanImage();
-        image2->setResource(Att2.Image);
+        image2->setResource(View_1.GetImage());
         Framebuffer.attachments[1].image = image2;
 
         auto image_view2 = new VulkanImageView();
-        image_view2->setResource(Att2.View);
+        image_view2->setResource(View_1.GetImageView());
         Framebuffer.attachments[1].view = image_view2;
 
         auto memory2 = new VulkanDeviceMemory();
-        memory->setResource(Att2.Mem);
+        memory->setResource(View_1.GetMem());
         Framebuffer.attachments[1].mem = memory2;
     }
     void UShadowPass::setupRenderPass()

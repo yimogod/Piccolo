@@ -15,6 +15,12 @@ void FVulkanImage::Destroy(FVulkanDevice& Device)
     vkFreeMemory(Device.GetDevice(), RawMemory, nullptr);
 }
 
+void FVulkanImage::SetSize(uint32_t InWidth, uint32_t InHeight)
+{
+    Width = InWidth;
+    Height = InHeight;
+}
+
 void FVulkanImage::CreateImage(FVulkanDevice& Device)
 {
     //1. 创建图片对象. 只是个对象的代表, 并没有实际的内存分配
@@ -24,9 +30,9 @@ void FVulkanImage::CreateImage(FVulkanDevice& Device)
     ImageInfo.extent.width = Width;
     ImageInfo.extent.height = Height;
     ImageInfo.extent.depth = 1;
-    ImageInfo.format = Format;
+    ImageInfo.format = RawFormat;
     ImageInfo.mipLevels = 1;
-    ImageInfo.arrayLayers = 1;
+    ImageInfo.arrayLayers = ArrayLayers;
     ImageInfo.tiling = Tiling;
     ImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     ImageInfo.usage = Usage;
@@ -36,6 +42,7 @@ void FVulkanImage::CreateImage(FVulkanDevice& Device)
     if (vkCreateImage(Device.GetDevice(), &ImageInfo, nullptr, &RawImage) != VK_SUCCESS) {
         throw std::runtime_error("failed to create image!");
     }
+
 
     //图片需要的显存
     VkMemoryRequirements MemRequirements;
@@ -49,19 +56,36 @@ void FVulkanImage::CreateImage(FVulkanDevice& Device)
     vkBindImageMemory(Device.GetDevice(), RawImage, RawMemory, 0);
 }
 
+
 FVulkanImage2D::FVulkanImage2D(uint32_t W, uint32_t H, VkFormat InFormat, VkImageUsageFlags InUsage)
 {
     Width = W;
     Height = H;
-    Format = InFormat;
+    RawFormat = InFormat;
     Usage = InUsage;
 }
 
-// ----------------------- Image View -----------------------
+// -------------------------------------------- Image View ---------------------------------------------
 FVulkanImageView::FVulkanImageView(FVulkanImage& InImage, uint32_t InMipNum)
 {
     Image = InImage;
     MipNum = InMipNum;
+}
+
+void FVulkanImageView::SetSize(uint32_t InWidth, uint32_t InHeight)
+{
+    Image.Width = InWidth;
+    Image.Height = InHeight;
+}
+
+void FVulkanImageView::SetFormat(VkFormat InFormat)
+{
+    Image.RawFormat = InFormat;
+}
+
+void FVulkanImageView::SetUsage(VkImageUsageFlags Usage)
+{
+    Image.Usage = Usage;
 }
 
 void FVulkanImageView::CreateImageView_Color(FVulkanDevice& Device)
@@ -87,10 +111,13 @@ void FVulkanImageView::CreateImageView_Depth(FVulkanDevice& Device)
 
 void FVulkanImageView::InternalCreateImageView(FVulkanDevice& Device, VkImageViewType ViewType, VkImageAspectFlags AspectMask)
 {
+    //如果没有对应的Image, 先创建
+    CreateImageIfHasNot(Device);
+
     VkImageViewCreateInfo CreateInfo{};
     CreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     CreateInfo.image = Image.RawImage;
-    CreateInfo.format = Image.Format;
+    CreateInfo.format = Image.RawFormat;
     CreateInfo.viewType = ViewType;
 
     CreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -105,6 +132,14 @@ void FVulkanImageView::InternalCreateImageView(FVulkanDevice& Device, VkImageVie
 
     if (vkCreateImageView(Device.GetDevice(), &CreateInfo, nullptr, &RawView)!= VK_SUCCESS) {
         throw std::runtime_error("failed to create image views!");
+    }
+}
+
+void FVulkanImageView::CreateImageIfHasNot(FVulkanDevice& Device)
+{
+    if(Image.RawImage == VK_NULL_HANDLE)
+    {
+        Image.CreateImage(Device);
     }
 }
 

@@ -21,6 +21,12 @@ public:
     explicit FVulkanImage(VkImage& InBuffer) { RawImage = InBuffer; }
 
     VkImage& GetImage() { return RawImage; }
+    VkFormat GetFormat() { return RawFormat; }
+    uint32_t GetWidth() { return Width; }
+    uint32_t GetHeight() { return Height; }
+
+    //设置图片尺寸
+    void SetSize(uint32_t InWidth, uint32_t InHeight);
 
     //创建实际的VulkanImage对象
     void CreateImage(FVulkanDevice& Device);
@@ -40,19 +46,17 @@ protected:
     VkImage RawImage = VK_NULL_HANDLE;
     //存放图片的显存
     VkDeviceMemory RawMemory = VK_NULL_HANDLE;
+    //图片格式
+    VkFormat RawFormat = VkFormat::VK_FORMAT_B8G8R8A8_UINT;
 
     //开辟的image的尺寸. 比如平行光的shadow map, 就开辟了4096*4096.
     uint32_t Width = 0;
     uint32_t Height = 0;
 
-    //图片格式
-    VkFormat Format = VkFormat::VK_FORMAT_B8G8R8A8_UINT;
-
     //如果是对象数组的话, 有几层
     uint32_t ArrayLayers = 1;
     //默认标准2d图片
     VkImageType ImageType = VkImageType::VK_IMAGE_TYPE_2D;
-
 };
 
 class FVulkanImage2D : public FVulkanImage
@@ -63,7 +67,9 @@ public:
     FVulkanImage2D(uint32_t W, uint32_t H, VkFormat InFormat, VkImageUsageFlags InUsage);
 };
 
-
+/**
+ * vkImageView的对应对象.
+ * */
 class FVulkanImageView
 {
 public:
@@ -71,7 +77,21 @@ public:
 
     FVulkanImageView(FVulkanImage& InImage, uint32_t InMipNum = 1);
 
-    VkImageView& GetVkImageView() { return RawView; }
+    VkImageView& GetImageView() { return RawView; }
+    VkImage& GetImage() { return Image.RawImage; }
+    VkDeviceMemory& GetMem() { return Image.RawMemory; }
+    VkFormat GetFormat() { return Image.RawFormat; }
+    uint32_t GetWidth() { return Image.Width; }
+    uint32_t GetHeight() { return Image.Height; }
+
+    //设置图片尺寸
+    void SetSize(uint32_t InWidth, uint32_t InHeight);
+
+    //设置图片的format
+    void SetFormat(VkFormat InFormat);
+
+    //设置图片的usage
+    void SetUsage(VkImageUsageFlags Usage);
 
     void CreateImageView_Color(FVulkanDevice& Device);
 
@@ -83,6 +103,9 @@ public:
 private:
     //创建实际的VulkanImageView对象
     void InternalCreateImageView(FVulkanDevice& Device, VkImageViewType ViewType, VkImageAspectFlags AspectMask);
+
+    //如果view还没有绑定的Image, 那么同时创建Image
+    void CreateImageIfHasNot(FVulkanDevice& Device);
 
     //mip levels
     uint32_t MipNum = 1;
