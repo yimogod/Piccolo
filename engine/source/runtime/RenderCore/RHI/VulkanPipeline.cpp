@@ -1,23 +1,27 @@
 #include "VulkanPipeline.h"
+#include "VulkanDevice.h"
+#include "VulkanRenderPass.h"
 #include <stdexcept>
 
-void FVulkanShader::CreateShader(VkDevice                          Device,
+void FVulkanShader::CreateShader(FVulkanDevice& Device,
                                  const std::vector<unsigned char>& VertCode,
                                  const std::vector<unsigned char>& FragCode)
 {
-    CreateShaderModule(Device, VertCode, VertShader);
-    CreateShaderModule(Device, FragCode, FragShader);
+    CreateShaderModule(Device.GetDevice(), VertCode, VertShader);
+    CreateShaderModule(Device.GetDevice(), FragCode, FragShader);
 }
-void FVulkanShader::CreateShader(VkDevice                          Device,
+
+void FVulkanShader::CreateShader(FVulkanDevice& Device,
                                  const std::vector<unsigned char>& VertCode,
                                  const std::vector<unsigned char>& GeomCode,
                                  const std::vector<unsigned char>& FragCode)
 {
-    CreateShaderModule(Device, VertCode, VertShader);
-    CreateShaderModule(Device, GeomCode, GeomShader);
-    CreateShaderModule(Device, FragCode, FragShader);
+    CreateShaderModule(Device.GetDevice(), VertCode, VertShader);
+    CreateShaderModule(Device.GetDevice(), GeomCode, GeomShader);
+    CreateShaderModule(Device.GetDevice(), FragCode, FragShader);
 }
-void FVulkanShader::CreateStages(std::vector<VkPipelineShaderStageCreateInfo>& OutStages)
+
+void FVulkanShader::CreateStages()
 {
     //计算用到了那些shader
     uint32_t Size = 2;
@@ -26,25 +30,25 @@ void FVulkanShader::CreateStages(std::vector<VkPipelineShaderStageCreateInfo>& O
         Size++;
     }
 
-
     //同样规则创建stage
-    OutStages.resize(Size);
+    ShaderStages.resize(Size);
     uint32_t i = 0;
 
     //vert stage
-    OutStages[i] = CreateShaderStage(VertShader, VK_SHADER_STAGE_VERTEX_BIT);
+    ShaderStages[i] = CreateShaderStage(VertShader, VK_SHADER_STAGE_VERTEX_BIT);
     i++;
 
     //geom stage
     if (GeomShader != VK_NULL_HANDLE)
     {
-        OutStages[1] = CreateShaderStage(GeomShader, VK_SHADER_STAGE_GEOMETRY_BIT);
+        ShaderStages[1] = CreateShaderStage(GeomShader, VK_SHADER_STAGE_GEOMETRY_BIT);
         i++;
     }
 
     //pixel stage
-    OutStages[i] = CreateShaderStage(FragShader, VK_SHADER_STAGE_FRAGMENT_BIT);
+    ShaderStages[i] = CreateShaderStage(FragShader, VK_SHADER_STAGE_FRAGMENT_BIT);
 }
+
 void FVulkanShader::CreateShaderModule(VkDevice                          Device,
                                        const std::vector<unsigned char>& ShaderCode,
                                        VkShaderModule&                   OutShader)
@@ -69,19 +73,21 @@ VkPipelineShaderStageCreateInfo FVulkanShader::CreateShaderStage(VkShaderModule&
     CreateInfo.pName  = "main";
     return CreateInfo;
 }
-void FVulkanShader::DestroyShader(VkDevice Device)
+
+void FVulkanShader::Destroy(FVulkanDevice& Device)
 {
-    vkDestroyShaderModule(Device, VertShader, nullptr);
-    vkDestroyShaderModule(Device, FragShader, nullptr);
+    vkDestroyShaderModule(Device.GetDevice(), VertShader, nullptr);
+    vkDestroyShaderModule(Device.GetDevice(), FragShader, nullptr);
 
     if(GeomShader != VK_NULL_HANDLE)
     {
-        vkDestroyShaderModule(Device, GeomShader, nullptr);
+        vkDestroyShaderModule(Device.GetDevice(), GeomShader, nullptr);
     }
 }
+
 void FVulkanPipelineState::SetupDefaultState()
 {
-    //没有顶点输入数据
+    //设置顶点数据格式, 目前因为没有顶点数据, 所以这里先没有顶点输入数据
     VertInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     VertInputState.vertexBindingDescriptionCount = 0;
     VertInputState.pVertexBindingDescriptions    = nullptr;
@@ -100,7 +106,7 @@ void FVulkanPipelineState::SetupDefaultState()
     RasterState.lineWidth               = 1.0f; //线框模式下的线宽度
     RasterState.cullMode                = VK_CULL_MODE_BACK_BIT; //背面裁剪
     //RasterState.cullMode = VK_CULL_MODE_NONE; //不做背面裁剪
-    RasterState.frontFace               = VK_FRONT_FACE_CLOCKWISE; ///顺时针为正方向
+    RasterState.frontFace               = VK_FRONT_FACE_CLOCKWISE; //顺时针为正方向
     RasterState.depthBiasEnable         = VK_FALSE; //关闭深度偏移
     RasterState.depthBiasConstantFactor = 0.0f;
     RasterState.depthBiasClamp          = 0.0f;
@@ -131,7 +137,6 @@ void FVulkanPipelineState::SetupDefaultState()
     DepthState.stencilTestEnable     = VK_FALSE; //关闭模板测试
 
     //动态状态指定
-    //动态状态指定
     DynamicStateData.resize(2);
     DynamicStateData[0] = VK_DYNAMIC_STATE_VIEWPORT;
     DynamicStateData[1] = VK_DYNAMIC_STATE_SCISSOR;
@@ -139,11 +144,13 @@ void FVulkanPipelineState::SetupDefaultState()
     DynamicState.dynamicStateCount = DynamicStateData.size();
     DynamicState.pDynamicStates    = DynamicStateData.data();
 }
+
 void FVulkanPipelineState::SetVertexBindingDescription(std::vector<VkVertexInputBindingDescription>& VertexBindings)
 {
     VertInputState.vertexBindingDescriptionCount   = VertexBindings.size();
     VertInputState.pVertexBindingDescriptions      = VertexBindings.data();
 }
+
 void FVulkanPipelineState::SetVertexAttributeDescription(std::vector<VkVertexInputAttributeDescription>& VertexAttributes)
 {
     VertInputState.vertexAttributeDescriptionCount = VertexAttributes.size();
@@ -183,8 +190,9 @@ void FVulkanPipelineState::SetColorBlendFactor(uint32_t      Index,
     auto& Attachment = ColorBlendData[Index];
     Attachment.srcColorBlendFactor = SrcColorFactor;
     Attachment.dstColorBlendFactor = DstColorFactor;
-    Attachment.colorBlendOp        = ColorOp;
+    Attachment.colorBlendOp = ColorOp;
 }
+
 void FVulkanPipelineState::SetAlphaBlendFactor(uint32_t      Index,
                                                VkBlendFactor SrcAlphaFactor,
                                                VkBlendFactor DstAlphaFactor,
@@ -193,14 +201,16 @@ void FVulkanPipelineState::SetAlphaBlendFactor(uint32_t      Index,
     auto& Attachment = ColorBlendData[Index];
     Attachment.srcAlphaBlendFactor = SrcAlphaFactor;
     Attachment.dstAlphaBlendFactor = DstAlphaFactor;
-    Attachment.alphaBlendOp        = AlphaOp;
+    Attachment.alphaBlendOp = AlphaOp;
 }
+
 void FVulkanPipelineState::SetupColorBlend()
 {
-    ColorBlendState.logicOp       = VK_LOGIC_OP_COPY;
+    ColorBlendState.logicOp = VK_LOGIC_OP_COPY;
     ColorBlendState.attachmentCount = ColorBlendData.size();
-    ColorBlendState.pAttachments      = ColorBlendData.data();
+    ColorBlendState.pAttachments = ColorBlendData.data();
 }
+
 void FVulkanPipelineState::SetDepthState(VkBool32 bTestEnable, VkBool32 bWriteEnable, VkCompareOp CompareOP, VkBool32 bDepthBoundTestEnable)
 {
     DepthState.depthTestEnable = bTestEnable;
@@ -208,6 +218,7 @@ void FVulkanPipelineState::SetDepthState(VkBool32 bTestEnable, VkBool32 bWriteEn
     DepthState.depthCompareOp = CompareOP;
     DepthState.depthBoundsTestEnable = bDepthBoundTestEnable;
 }
+
 void FVulkanPipelineState::SetStencilState(VkBool32 bTestEnable)
 {
     DepthState.stencilTestEnable = bTestEnable; 
@@ -286,16 +297,18 @@ void FVulkanPipelineState::CopyDynamicState(VkPipelineDynamicStateCreateInfo& In
     InOutState.dynamicStateCount = DynamicState.dynamicStateCount;
     InOutState.pDynamicStates = DynamicState.pDynamicStates;
 }
-void FVulkanPipeline::CreateLayout(VkDevice& Device, std::vector<FVulkanDescriptorSet>& DescriptorSets)
+
+void FVulkanPipeline::CreateLayout(FVulkanDevice& Device, std::vector<FVulkanDescriptorSet>& DescriptorSets)
 {
     std::vector<VkDescriptorSetLayout> DescriptorLayouts;
     for (auto& Set : DescriptorSets)
     {
-        DescriptorLayouts.push_back(Set.GetLayout());
+        DescriptorLayouts.push_back(Set.GetVkLayout());
     }
     CreateLayout(Device, DescriptorLayouts);
 }
-void FVulkanPipeline::CreateLayout(VkDevice& Device, std::vector<VkDescriptorSetLayout>& DescriptorLayouts)
+
+void FVulkanPipeline::CreateLayout(FVulkanDevice& Device, std::vector<VkDescriptorSetLayout>& DescriptorLayouts)
 {
     //创建管线布局, 及这个Pipeline用到了多少个desc set layout.
     //于是有了layout(set = 1, binding = 2)
@@ -304,7 +317,7 @@ void FVulkanPipeline::CreateLayout(VkDevice& Device, std::vector<VkDescriptorSet
     CreateInfo.setLayoutCount = DescriptorLayouts.size();
     CreateInfo.pSetLayouts    = DescriptorLayouts.data();
 
-    if (vkCreatePipelineLayout(Device,
+    if (vkCreatePipelineLayout(Device.GetDevice(),
                                &CreateInfo,
                                nullptr,
                                &RawPipelineLayout) != VK_SUCCESS)
@@ -312,8 +325,19 @@ void FVulkanPipeline::CreateLayout(VkDevice& Device, std::vector<VkDescriptorSet
         throw std::runtime_error("CreatePipelineLayout Error");
     }
 }
-void FVulkanPipeline::CreatePipeline(VkDevice& Device, VkRenderPass& RenderPass, uint32_t SubpassIndex,
-                                     std::vector<VkPipelineShaderStageCreateInfo>& ShaderStages, FVulkanPipelineState& State)
+
+void FVulkanPipeline::CreateShader(FVulkanDevice&                    Device,
+                                   const std::vector<unsigned char>& VertCode,
+                                   const std::vector<unsigned char>& FragCode)
+{
+    Shader.CreateShader(Device, VertCode, FragCode);
+    Shader.CreateStages();
+}
+
+
+
+void FVulkanPipeline::CreatePipeline(FVulkanDevice& Device, FVulkanRenderPass& RenderPass, uint32_t SubpassIndex,
+                                     FVulkanPipelineState& State)
 {
     // 拷贝变量到本地. 可能跟vulkan的机制有关. 只有本地局部变量才能正确创建piplineline对象
     VkPipelineVertexInputStateCreateInfo VertInputState = {};
@@ -342,8 +366,8 @@ void FVulkanPipeline::CreatePipeline(VkDevice& Device, VkRenderPass& RenderPass,
 
     VkGraphicsPipelineCreateInfo PipelineInfo {};
     PipelineInfo.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    PipelineInfo.stageCount          = ShaderStages.size();
-    PipelineInfo.pStages             = ShaderStages.data();
+    PipelineInfo.stageCount          = Shader.GetStageSize();
+    PipelineInfo.pStages             = Shader.GetVkShaderStage();
     PipelineInfo.pVertexInputState   = &VertInputState;
     PipelineInfo.pInputAssemblyState = &AssemblyState;
     PipelineInfo.pViewportState      = &ViewportState;
@@ -352,12 +376,12 @@ void FVulkanPipeline::CreatePipeline(VkDevice& Device, VkRenderPass& RenderPass,
     PipelineInfo.pColorBlendState    = &tColorBlendState;
     PipelineInfo.pDepthStencilState  = &tDepthState;
     PipelineInfo.layout              = RawPipelineLayout;
-    PipelineInfo.renderPass          = RenderPass;
+    PipelineInfo.renderPass          = RenderPass.GetVkRenderPass();
     PipelineInfo.subpass             = SubpassIndex;
     PipelineInfo.basePipelineHandle  = VK_NULL_HANDLE;
     PipelineInfo.pDynamicState       = &tDynamicState;
 
-    if (vkCreateGraphicsPipelines(Device,
+    if (vkCreateGraphicsPipelines(Device.GetDevice(),
                                   VK_NULL_HANDLE,
                                   1,
                                   &PipelineInfo,
@@ -369,3 +393,7 @@ void FVulkanPipeline::CreatePipeline(VkDevice& Device, VkRenderPass& RenderPass,
     }
 }
 
+void FVulkanPipeline::DestroyShader(FVulkanDevice& Device)
+{
+    Shader.Destroy(Device);
+}

@@ -56,6 +56,7 @@ void FVulkanCommandBuffer::EndDebugUtils()
     //会报链接错误
     //vkCmdEndDebugUtilsLabelEXT(RawCommandBuffer);
 }
+
 void FVulkanCommandBuffer::BeginRenderPass(FVulkanFrameBuffer& FrameBuffer, FVulkanRenderPass& RenderPass, VkExtent2D VkExtent)
 {
     VkRenderPassBeginInfo BeginInfo {};
@@ -69,6 +70,7 @@ void FVulkanCommandBuffer::BeginRenderPass(FVulkanFrameBuffer& FrameBuffer, FVul
 
     vkCmdBeginRenderPass(RawCommandBuffer, &BeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 }
+
 void FVulkanCommandBuffer::EndRenderPass()
 {
     //if (!bRunning)return;

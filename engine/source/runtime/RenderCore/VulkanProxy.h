@@ -10,7 +10,7 @@ class UVulkanProxy
 public:
     UVulkanProxy() = default;
 
-    //方便调用, 提供了原始vk的接口
+    //TODO 用就rhi的数据. 日后会删除
     VkDevice Device = VK_NULL_HANDLE;
     VkPhysicalDevice Gpu = VK_NULL_HANDLE;
     VkDescriptorPool DescriptorPool = VK_NULL_HANDLE;
@@ -19,6 +19,7 @@ public:
     VkFormat DepthFormat = VK_FORMAT_D32_SFLOAT;
 
     FVulkanDevice Device2;
+    FVulkanDescriptorPool DescriptorPool2;
 
     //初始化vulkan系统. 比如
     // 1. 描述符池子,

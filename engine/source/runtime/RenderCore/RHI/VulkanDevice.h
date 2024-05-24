@@ -17,6 +17,7 @@ public:
     void SetInstance(VkInstance& InInstance){ Instance = InInstance; }
 
     VkDevice& GetDevice() { return Device; }
+    VkDevice& GetVkDevice() { return Device; }
     VkPhysicalDevice& GetGPU() { return GPU; }
 
     void CreateDevice();

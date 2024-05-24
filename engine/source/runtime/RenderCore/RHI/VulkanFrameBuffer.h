@@ -28,7 +28,7 @@ public:
     //获取当前正在使用的FrameBuffer
     VkFramebuffer& GetFrameBuffer() { return CachedFramebuffers[CurrBufferIndex]; }
 
-    VkFormat GetAttachmentFormat(uint32_t Index){ return CachedAttachments2[Index].GetFormat(); }
+    VkFormat GetAttachmentFormat(uint32_t Index){ return CachedAttachments[Index].GetFormat(); }
 
     //获取frame充满的viewport
     VkViewport GetFullViewport();
@@ -41,18 +41,20 @@ public:
     void SetCurrentBufferIndex(uint32_t Index) { CurrBufferIndex = Index; }
     void AddAttachment(FVulkanImageView& Attachment);
 
-    void SetFrameAttachmentNum(uint32_t Num) { CachedAttachments2.resize(Num); }
+    void SetFrameAttachmentNum(uint32_t Num) { CachedAttachments.resize(Num); }
 
     //设置ClearValue的值
     void SetClearColorValue(uint32_t Index, VkClearColorValue Value);
     void SetClearDepthValue(uint32_t Index, VkClearDepthStencilValue Value);
     void SetClearColors_Black();
 
+
     //合并交换链的view, 创建frame buffer, 一般用于最后一个pass, 展示渲染结果
-    void CreateFrameBuffer(VkDevice& Device, VkRenderPass& RenderPass, std::vector<VkImageView>& SwapChainView);
+    void CreateFrameBuffer(FVulkanDevice& Device, FVulkanRenderPass& RenderPass, std::vector<VkImageView>& SwapChainView);
+
     //创建frame buffer. 不 包含交换链的imageview, FrameLayers是VkFramebufferCreateInfo的layers的成员变量
-    void CreateFrameBuffer(VkDevice& Device, VkRenderPass& RenderPass);
-    void CreateFrameBuffer(VkDevice& Device, VkRenderPass& RenderPass, uint32_t FrameLayers);
+    void CreateFrameBuffer(FVulkanDevice& Device, FVulkanRenderPass& RenderPass);
+    void CreateFrameBuffer(FVulkanDevice& Device, FVulkanRenderPass& RenderPass, uint32_t FrameLayers);
 
     void DestroyFrameBuffer(VkDevice& Device);
 private:
@@ -69,7 +71,7 @@ private:
 
     //用到的所有的帧缓冲附件. 这个附件个数和描述符集数组(即RenderPass用到的所有的附件)所有用到的个数相同
     //附件仅用于PS, 可以粗暴的将附件理解为RenderTarget
-    std::vector<FVulkanImageView> CachedAttachments2;
+    std::vector<FVulkanImageView> CachedAttachments;
 
     //frame buffer对应的clear value
     std::vector<VkClearValue> ClearValues;

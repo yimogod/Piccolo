@@ -1,8 +1,9 @@
 #include "ShadowPass.h"
 
-#include "runtime/function/render/render_mesh.h"
+#include "function/render/render_helper.h"
 #include "runtime/function/render/interface/vulkan/vulkan_rhi.h"
 #include "runtime/function/render/render_common.h"
+#include "runtime/function/render/render_mesh.h"
 
 #include <mesh_directional_light_shadow_frag.h>
 #include <mesh_directional_light_shadow_vert.h>
@@ -52,45 +53,25 @@ namespace Piccolo
         View_0.SetSize(Packet.FrameBuffer.Width, Packet.FrameBuffer.Height);
         View_0.SetFormat(VK_FORMAT_R32_SFLOAT);
         View_0.SetUsage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);//用于采样和Ps输出--即shader的输入输出
-        View_0.CreateImageView_Color(Vulkan->Device2); // Color Bit
+        View_0.CreateImageView_Color(Vulkan->Device2);
         Packet.FrameBuffer.AddAttachment(View_0);
 
         // depth
         FVulkanImageView View_1;
         View_1.SetSize(Packet.FrameBuffer.Width, Packet.FrameBuffer.Height);
         View_1.SetFormat(Vulkan->DepthFormat);
-        View_1.SetUsage(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT);//用于采样和Ps输出--即shader的输入输出
-        View_1.CreateImageView_Depth(Vulkan->Device2); // Color Bit
+        View_1.SetUsage(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT);
+        View_1.CreateImageView_Depth(Vulkan->Device2);
         Packet.FrameBuffer.AddAttachment(View_1);
 
 
 
 
         ////////////////////////////// TODO 兼容代码  ///////////////////////
-//        FVulkanFrameBufferAttachment Attachment_0;
-//        Attachment_0.Format = VK_FORMAT_R32_SFLOAT;
-//        Attachment_0.Width = Attachment_0.Height = Packet.FrameBuffer.Width; //宽高一样
-//        Attachment_0.Image = View_0.GetImage();
-//        Attachment_0.View = View_0.GetImageView();
-//        Attachment_0.Mem = View_0.GetMem();
-//        Packet.FrameBuffer.AddFrameAttachment(Attachment_0);
-//
-//
-//        FVulkanFrameBufferAttachment Attachment_1;
-//        Attachment_1.Format = Vulkan->DepthFormat;
-//        Attachment_1.Width = Attachment_1.Height = Packet.FrameBuffer.Height;
-//        Attachment_1.Image = View_1.GetImage();
-//        Attachment_1.View = View_1.GetImageView();
-//        Attachment_1.Mem = View_1.GetMem();
-//        Packet.FrameBuffer.AddFrameAttachment(Attachment_1);
-
-
-
         // color and depth
         Framebuffer.attachments.resize(2);
 
         // color
-        //FVulkanFrameBufferAttachment Att1   = Packet.FrameBuffer.GetAttachment(0);
         Framebuffer.attachments[0].format = (RHIFormat)View_0.GetFormat();
         
         auto image = new VulkanImage();
@@ -107,7 +88,6 @@ namespace Piccolo
 
 
         // depth
-        //FVulkanFrameBufferAttachment Att2   = Packet.FrameBuffer.GetAttachment(1);
         Framebuffer.attachments[1].format = (RHIFormat)View_1.GetFormat();
 
         auto image2 = new VulkanImage();
@@ -171,83 +151,81 @@ namespace Piccolo
 
         //TODO 兼容旧引擎
 		auto pRenderPass = new VulkanRenderPass();
-        pRenderPass->setResource(Packet.RenderPass.GetVKRenderPass());
+        pRenderPass->setResource(Packet.RenderPass.GetVkRenderPass());
         Framebuffer.render_pass = pRenderPass;
     }
+
     void UShadowPass::setupFramebuffer()
     {
         //使用initialize方法中手动创建的两个image view. 即自己已存的两个view
-        Packet.FrameBuffer.CreateFrameBuffer(m_rhi->m_device, Packet.RenderPass.GetVKRenderPass());
+        Packet.FrameBuffer.CreateFrameBuffer(Vulkan->Device2, Packet.RenderPass);
 
         //TODO 兼容旧引擎
     	Framebuffer.framebuffer = new VulkanFramebuffer();
         ((VulkanFramebuffer*)Framebuffer.framebuffer)->setResource(Packet.FrameBuffer.GetFrameBuffer());
     }
+
     void UShadowPass::setupDescriptorSetLayout()
     {
         //设置描述符布局
-        Packet.DescriptorSets.resize(1);
+        Packet.SetDescriptorSetNum(1);
 
         // 3个binding, 对应shader中的layout(set = 0, binding = 0/1/2)
         // VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC 可被动态写入的buffer, 允许单个set中的单个缓冲区高频地更新
-        
+
         // 3个set都用于顶点阶段, 在mesh_directional_light_shadow.vert中分别是mvp, meshinstance, joint_matrices(动画)
-        auto& Set = Packet.DescriptorSets[0];
+        auto& Set = Packet.GetDescriptorSet(0);
         //都用于顶点shader
         Set.SetBindingNum(3);
         Set.SetLayoutBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);
         Set.SetLayoutBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);
         Set.SetLayoutBinding(2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);
-        Set.CreateDescriptorLayout(m_rhi->m_device);
+        Set.CreateDescriptorLayout(Vulkan->Device2);
 
 
         //TODO 兼容旧引擎
         m_descriptor_infos.resize(1);
         m_descriptor_infos[0].layout = new VulkanDescriptorSetLayout();
-        ((VulkanDescriptorSetLayout*)m_descriptor_infos[0].layout)->setResource(Packet.DescriptorSets[0].GetLayout());
+        ((VulkanDescriptorSetLayout*)m_descriptor_infos[0].layout)->setResource(Packet.DescriptorSets[0].GetVkLayout());
     }
+
     void UShadowPass::setupPipelines()
     {
-        Packet.Pipelines.resize(1);
-        FVulkanPipeline& Pipeline = Packet.Pipelines[0];
+        Packet.SetPipelineNum(1);
+        FVulkanPipeline& Pipeline = Packet.GetPipeline(0);
 
         //设置管线布局, 管线布局用到了两个描述集布局
         std::vector<VkDescriptorSetLayout> DescLayouts = {
             Packet.GetVkDescriptorLayout(0), 
             ((VulkanDescriptorSetLayout*)m_per_mesh_layout)->getResource()
         };
-        Pipeline.CreateLayout(m_rhi->m_device, DescLayouts);
-
+        Pipeline.CreateLayout(Vulkan->Device2, DescLayouts);
         //设置Shader
-        FVulkanShader Shader;
-        Shader.CreateShader(
-            m_rhi->m_device, MESH_DIRECTIONAL_LIGHT_SHADOW_VERT, MESH_DIRECTIONAL_LIGHT_SHADOW_FRAG);
-        std::vector<VkPipelineShaderStageCreateInfo> shader_stages;
-        Shader.CreateStages(shader_stages);
+        Pipeline.CreateShader(Vulkan->Device2, MESH_DIRECTIONAL_LIGHT_SHADOW_VERT, MESH_DIRECTIONAL_LIGHT_SHADOW_FRAG);
 
         //设置状态
         FVulkanPipelineState State;
         State.SetupDefaultState();
 
         //设置顶点绑定和顶点属性
-        //TODO 兼容旧引擎
         RHIVertexInputBindingDescription VBD = MeshVertex::getBindingDescriptions()[0];
         VkVertexInputBindingDescription  VB;
         VB.binding = VBD.binding;
         VB.stride  = VBD.stride;
         VB.inputRate = (VkVertexInputRate)VBD.inputRate;
+        //设置顶点绑定给管线状态
+        std::vector<VkVertexInputBindingDescription> VertexBindings = { VB };
+        State.SetVertexBindingDescription(VertexBindings);
 
         RHIVertexInputAttributeDescription VAD = MeshVertex::getAttributeDescriptions()[0];
         VkVertexInputAttributeDescription  VA  = {VAD.location, VAD.binding, (VkFormat)VAD.format, VAD.offset};
-
-        std::vector<VkVertexInputBindingDescription> VertexBindings = { VB };
-        State.SetVertexBindingDescription(VertexBindings);
+        //设置顶点数据给管线状态
         std::vector<VkVertexInputAttributeDescription> VertexAttributes = {VA};
         State.SetVertexAttributeDescription(VertexAttributes);
 
         //设置pipeline的个性化数据
         VkViewport viewport = Packet.FrameBuffer.GetFullViewport();
-        VkRect2D   scissor  = Packet.FrameBuffer.GetFullScissor();
+        VkRect2D scissor = Packet.FrameBuffer.GetFullScissor();
         State.SetViewportState(viewport, scissor);
         State.SetRasterFrontFace(VK_FRONT_FACE_COUNTER_CLOCKWISE); //逆时针正方向
 
@@ -263,28 +241,29 @@ namespace Piccolo
         State.SetupNullDynamicState();
 
         //创建管线
-        Pipeline.CreatePipeline(m_rhi->m_device, Packet.RenderPass.GetVKRenderPass(), 0, shader_stages, State);
+        Pipeline.CreatePipeline(Vulkan->Device2, Packet.RenderPass, 0, State);
 
 
         //TODO 兼容旧数据
         Pipelines.resize(1);
         VulkanPipeline* VP = new VulkanPipeline();
-        VP->setResource(Pipeline.GetPipeline());
+        VP->setResource(Pipeline.GetVkPipeline());
         Pipelines[0].pipeline = VP;
         
         VulkanPipelineLayout* VPL = new VulkanPipelineLayout();
-        VPL->setResource(Pipeline.GetLayout());
+        VPL->setResource(Pipeline.GetVkLayout());
         Pipelines[0].layout = VPL;
 
-        Shader.DestroyShader(m_rhi->m_device);
+
+
+        Pipeline.DestroyShader(Vulkan->Device2);
     }
+
     //创建描述符集, 并把write和描述符集绑定起来
     void UShadowPass::setupDescriptorSet()
     {
-        auto& Set = Packet.DescriptorSets[0];
-        VulkanDescriptorPool* Pool  = (VulkanDescriptorPool*)m_rhi->m_descriptor_pool;
-        VkDescriptorPool      VPool = Pool->getResource();
-        Set.CreateDescriptorSet(m_rhi->m_device, VPool);
+        auto& Set = Packet.GetDescriptorSet(0);
+        Set.CreateDescriptorSet(Vulkan->Device2, Vulkan->DescriptorPool2);
 
         // Write和binding的数量一样
         // 创建了3个DescBufferInfo, 对应 VS shader的3个uniform(buffer), 奇怪的是在shader中没有uniform的标签
@@ -310,13 +289,15 @@ namespace Piccolo
             sizeof(MeshDirectionalLightShadowPerdrawcallVertexBlendingStorageBufferObject));
         Set.SetWriteBuffer(2, &mesh_vertex_blending_info);
 
-        Set.UpdateDescriptorSets(m_rhi->m_device);
+        //Set的数据已经填充完毕. 可以通过write同步了
+        Set.UpdateDescriptorSets(Vulkan->Device2);
 
         // TODO 兼容旧引擎
         m_descriptor_infos[0].descriptor_set = new VulkanDescriptorSet();
         ((VulkanDescriptorSet*)m_descriptor_infos[0].descriptor_set)
-            ->setResource(Packet.DescriptorSets[0].GetDescriptorSet());
+            ->setResource(Packet.DescriptorSets[0].GetVkDescriptorSet());
     }
+
     void UShadowPass::drawModel()
     {
         struct MeshNode
@@ -350,6 +331,7 @@ namespace Piccolo
         VkCommandBuffer RawCommandBuffer;
         RawCommandBuffer = ((VulkanCommandBuffer*)m_rhi->m_current_command_buffer)->getResource();
         FVulkanCommandBuffer CB = FVulkanCommandBuffer(RawCommandBuffer);
+
         // Directional Light Shadow begin pass
         {
             Packet.FrameBuffer.SetClearColorValue(0, {1.0f});
@@ -360,11 +342,197 @@ namespace Piccolo
             m_rhi->pushEvent(m_rhi->getCurrentCommandBuffer(), "Directional Light Shadow", color);
         }
 
+        // Draw Mesh
+        {
+            float color[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+            m_rhi->pushEvent(m_rhi->getCurrentCommandBuffer(), "Mesh", color);
+
+            m_rhi->cmdBindPipelinePFN(m_rhi->getCurrentCommandBuffer(), RHI_PIPELINE_BIND_POINT_GRAPHICS, Pipelines[0].pipeline);
+
+            // perframe storage buffer
+            uint32_t perframe_dynamic_offset =
+                roundUp(m_global_render_resource->_storage_buffer
+                            ._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()],
+                        m_global_render_resource->_storage_buffer._min_storage_buffer_offset_alignment);
+            m_global_render_resource->_storage_buffer
+                ._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()] =
+                perframe_dynamic_offset + sizeof(MeshPerframeStorageBufferObject);
+            assert(m_global_render_resource->_storage_buffer
+                       ._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()] <=
+                   (m_global_render_resource->_storage_buffer
+                        ._global_upload_ringbuffers_begin[m_rhi->getCurrentFrameIndex()] +
+                    m_global_render_resource->_storage_buffer
+                        ._global_upload_ringbuffers_size[m_rhi->getCurrentFrameIndex()]));
+
+            MeshDirectionalLightShadowPerframeStorageBufferObject& perframe_storage_buffer_object =
+                (*reinterpret_cast<MeshDirectionalLightShadowPerframeStorageBufferObject*>(
+                    reinterpret_cast<uintptr_t>(
+                        m_global_render_resource->_storage_buffer._global_upload_ringbuffer_memory_pointer) +
+                    perframe_dynamic_offset));
+            perframe_storage_buffer_object = m_mesh_directional_light_shadow_perframe_storage_buffer_object;
+
+            for (auto& [material, mesh_instanced] : directional_light_mesh_drawcall_batch)
+            {
+                // TODO: render from near to far
+
+                for (auto& [mesh, mesh_nodes] : mesh_instanced)
+                {
+                    uint32_t total_instance_count = static_cast<uint32_t>(mesh_nodes.size());
+                    if (total_instance_count > 0)
+                    {
+                        // bind per mesh
+                        m_rhi->cmdBindDescriptorSetsPFN(m_rhi->getCurrentCommandBuffer(),
+                                                        RHI_PIPELINE_BIND_POINT_GRAPHICS,
+                                                        Pipelines[0].layout,
+                                                        1,
+                                                        1,
+                                                        &mesh->mesh_vertex_blending_descriptor_set,
+                                                        0,
+                                                        NULL);
+
+                        RHIBuffer*     vertex_buffers[] = {mesh->mesh_vertex_position_buffer};
+                        RHIDeviceSize offsets[]        = {0};
+                        m_rhi->cmdBindVertexBuffersPFN(m_rhi->getCurrentCommandBuffer(), 0, 1, vertex_buffers, offsets);
+                        m_rhi->cmdBindIndexBufferPFN(m_rhi->getCurrentCommandBuffer(), mesh->mesh_index_buffer, 0, RHI_INDEX_TYPE_UINT16);
+
+                        uint32_t drawcall_max_instance_count =
+                            (sizeof(MeshDirectionalLightShadowPerdrawcallStorageBufferObject::mesh_instances) /
+                             sizeof(MeshDirectionalLightShadowPerdrawcallStorageBufferObject::mesh_instances[0]));
+                        uint32_t drawcall_count =
+                            roundUp(total_instance_count, drawcall_max_instance_count) / drawcall_max_instance_count;
+
+                        for (uint32_t drawcall_index = 0; drawcall_index < drawcall_count; ++drawcall_index)
+                        {
+                            uint32_t current_instance_count =
+                                ((total_instance_count - drawcall_max_instance_count * drawcall_index) <
+                                 drawcall_max_instance_count) ?
+                                    (total_instance_count - drawcall_max_instance_count * drawcall_index) :
+                                    drawcall_max_instance_count;
+
+                            // perdrawcall storage buffer
+                            uint32_t perdrawcall_dynamic_offset =
+                                roundUp(m_global_render_resource->_storage_buffer
+                                            ._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()],
+                                        m_global_render_resource->_storage_buffer._min_storage_buffer_offset_alignment);
+                            m_global_render_resource->_storage_buffer
+                                ._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()] =
+                                perdrawcall_dynamic_offset +
+                                sizeof(MeshDirectionalLightShadowPerdrawcallStorageBufferObject);
+                            assert(m_global_render_resource->_storage_buffer
+                                       ._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()] <=
+                                   (m_global_render_resource->_storage_buffer
+                                        ._global_upload_ringbuffers_begin[m_rhi->getCurrentFrameIndex()] +
+                                    m_global_render_resource->_storage_buffer
+                                        ._global_upload_ringbuffers_size[m_rhi->getCurrentFrameIndex()]));
+
+                            MeshDirectionalLightShadowPerdrawcallStorageBufferObject&
+                                perdrawcall_storage_buffer_object =
+                                    (*reinterpret_cast<MeshDirectionalLightShadowPerdrawcallStorageBufferObject*>(
+                                        reinterpret_cast<uintptr_t>(m_global_render_resource->_storage_buffer
+                                                                        ._global_upload_ringbuffer_memory_pointer) +
+                                        perdrawcall_dynamic_offset));
+                            for (uint32_t i = 0; i < current_instance_count; ++i)
+                            {
+                                perdrawcall_storage_buffer_object.mesh_instances[i].model_matrix =
+                                    *mesh_nodes[drawcall_max_instance_count * drawcall_index + i].model_matrix;
+                                perdrawcall_storage_buffer_object.mesh_instances[i].enable_vertex_blending =
+                                    mesh_nodes[drawcall_max_instance_count * drawcall_index + i].joint_matrices ? 1.0 :
+                                                                                                                  -1.0;
+                            }
+
+                            // per drawcall vertex blending storage buffer
+                            uint32_t per_drawcall_vertex_blending_dynamic_offset;
+                            bool     least_one_enable_vertex_blending = true;
+                            for (uint32_t i = 0; i < current_instance_count; ++i)
+                            {
+                                if (!mesh_nodes[drawcall_max_instance_count * drawcall_index + i].joint_matrices)
+                                {
+                                    least_one_enable_vertex_blending = false;
+                                    break;
+                                }
+                            }
+                            if (least_one_enable_vertex_blending)
+                            {
+                                per_drawcall_vertex_blending_dynamic_offset = roundUp(
+                                    m_global_render_resource->_storage_buffer
+                                        ._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()],
+                                    m_global_render_resource->_storage_buffer._min_storage_buffer_offset_alignment);
+                                m_global_render_resource->_storage_buffer
+                                    ._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()] =
+                                    per_drawcall_vertex_blending_dynamic_offset +
+                                    sizeof(MeshDirectionalLightShadowPerdrawcallVertexBlendingStorageBufferObject);
+                                assert(m_global_render_resource->_storage_buffer
+                                           ._global_upload_ringbuffers_end[m_rhi->getCurrentFrameIndex()] <=
+                                       (m_global_render_resource->_storage_buffer
+                                            ._global_upload_ringbuffers_begin[m_rhi->getCurrentFrameIndex()] +
+                                        m_global_render_resource->_storage_buffer
+                                            ._global_upload_ringbuffers_size[m_rhi->getCurrentFrameIndex()]));
+
+                                MeshDirectionalLightShadowPerdrawcallVertexBlendingStorageBufferObject&
+                                    per_drawcall_vertex_blending_storage_buffer_object =
+                                        (*reinterpret_cast<
+                                            MeshDirectionalLightShadowPerdrawcallVertexBlendingStorageBufferObject*>(
+                                            reinterpret_cast<uintptr_t>(m_global_render_resource->_storage_buffer
+                                                                            ._global_upload_ringbuffer_memory_pointer) +
+                                            per_drawcall_vertex_blending_dynamic_offset));
+                                for (uint32_t i = 0; i < current_instance_count; ++i)
+                                {
+                                    if (mesh_nodes[drawcall_max_instance_count * drawcall_index + i].joint_matrices)
+                                    {
+                                        for (uint32_t j = 0;
+                                             j <
+                                             mesh_nodes[drawcall_max_instance_count * drawcall_index + i].joint_count;
+                                             ++j)
+                                        {
+                                            per_drawcall_vertex_blending_storage_buffer_object
+                                                .joint_matrices[s_mesh_vertex_blending_max_joint_count * i + j] =
+                                                mesh_nodes[drawcall_max_instance_count * drawcall_index + i]
+                                                    .joint_matrices[j];
+                                        }
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                per_drawcall_vertex_blending_dynamic_offset = 0;
+                            }
+
+                            // bind perdrawcall
+                            uint32_t dynamic_offsets[3] = {perframe_dynamic_offset,
+                                                           perdrawcall_dynamic_offset,
+                                                           per_drawcall_vertex_blending_dynamic_offset};
+                            m_rhi->cmdBindDescriptorSetsPFN(m_rhi->getCurrentCommandBuffer(),
+                                                            RHI_PIPELINE_BIND_POINT_GRAPHICS,
+                                                            Pipelines[0].layout,
+                                                            0,
+                                                            1,
+                                                            &m_descriptor_infos[0].descriptor_set,
+                                                            (sizeof(dynamic_offsets) / sizeof(dynamic_offsets[0])),
+                                                            dynamic_offsets);
+                            m_rhi->cmdDrawIndexedPFN(m_rhi->getCurrentCommandBuffer(),
+                                                     mesh->mesh_index_count,
+                                                     current_instance_count,
+                                                     0,
+                                                     0,
+                                                     0);
+                        }
+                    }
+                }
+            }
+
+            m_rhi->popEvent(m_rhi->getCurrentCommandBuffer());
+        }
+
+
+
+
+
         // Directional Light Shadow end pass
         {
             m_rhi->popEvent(m_rhi->getCurrentCommandBuffer());
 
-            m_rhi->cmdEndRenderPassPFN(m_rhi->getCurrentCommandBuffer());
+            CB.EndRenderPass();
+            //m_rhi->cmdEndRenderPassPFN(m_rhi->getCurrentCommandBuffer());
         }
     }
 } // namespace Piccolo

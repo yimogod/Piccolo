@@ -4,7 +4,10 @@
 #include "vulkan/vulkan_core.h"
 #include <vector>
 
+class FVulkanDevice;
 class FVulkanPipeline;
+class FVulkanRenderPass;
+
 
 //这里的Shader概念其实是Shader组. 目前包含了顶点和像素shader
 class FVulkanShader
@@ -12,16 +15,19 @@ class FVulkanShader
 public:
     FVulkanShader() = default;
 
+    uint32_t GetStageSize() { return ShaderStages.size(); }
+    VkPipelineShaderStageCreateInfo* GetVkShaderStage() { return ShaderStages.data(); }
+
     //根据顶点和像素shader的二进制, 创建shader对象
-    void CreateShader(VkDevice Device, const std::vector<unsigned char>& VertCode, const std::vector<unsigned char>& FragCode);
+    void CreateShader(FVulkanDevice& Device, const std::vector<unsigned char>& VertCode, const std::vector<unsigned char>& FragCode);
     //根据顶点几何和像素的shader二进制, 创建shader对象
-    void CreateShader(VkDevice Device, const std::vector<unsigned char>& VertCode, const std::vector<unsigned char>& GeomCode, const std::vector<unsigned char>& FragCode);
+    void CreateShader(FVulkanDevice& Device, const std::vector<unsigned char>& VertCode, const std::vector<unsigned char>& GeomCode, const std::vector<unsigned char>& FragCode);
 
     //根据shader module创建ShaderStage数组
-    void CreateStages(std::vector<VkPipelineShaderStageCreateInfo>& OutStages);
+    void CreateStages();
 
     //销毁ShaderModule
-    void DestroyShader(VkDevice Device);
+    void Destroy(FVulkanDevice& Device);
 private:
     //创建单个shader
     void CreateShaderModule(VkDevice Device, const std::vector<unsigned char>& ShaderCode, VkShaderModule& OutShader);
@@ -32,6 +38,8 @@ private:
     VkShaderModule VertShader = VK_NULL_HANDLE;
     VkShaderModule FragShader = VK_NULL_HANDLE;
     VkShaderModule GeomShader = VK_NULL_HANDLE;
+
+    std::vector<VkPipelineShaderStageCreateInfo> ShaderStages;
 };
 
 class FVulkanPipelineState
@@ -108,28 +116,38 @@ private:
     VkPipelineDynamicStateCreateInfo DynamicState;
 };
 
+// Vulkan用于sub pass的管线.
+// 这里将Shader统一到了类中, 方便管理
 class FVulkanPipeline
 {
 public:
     FVulkanPipeline() = default;
 
-    VkPipelineLayout& GetLayout(){ return RawPipelineLayout; }
-    VkPipeline& GetPipeline(){ return RawPipeline;}
+    VkPipelineLayout& GetVkLayout(){ return RawPipelineLayout; }
+    VkPipeline& GetVkPipeline(){ return RawPipeline; }
 
     //根据传入的描述符的布局数组来创建管线布局, DescriptorSets是本管线(subpass/shader)用到的描述符集合. 而不是整个pass的所有的描述符集合
-    void CreateLayout(VkDevice& Device, std::vector<FVulkanDescriptorSet>& DescriptorSets);
-    void CreateLayout(VkDevice& Device, std::vector<VkDescriptorSetLayout>& DescriptorLayouts);
+    void CreateLayout(FVulkanDevice& Device, std::vector<FVulkanDescriptorSet>& DescriptorSets);
 
-    void CreatePipeline(VkDevice& Device, VkRenderPass& RenderPass, uint32_t SubpassIndex,
-                        std::vector<VkPipelineShaderStageCreateInfo>& ShaderStages, FVulkanPipelineState& State);
+    //TODO 暂时兼容旧有的引擎
+    void CreateLayout(FVulkanDevice& Device, std::vector<VkDescriptorSetLayout>& DescriptorLayouts);
 
+    void CreateShader(FVulkanDevice& Device, const std::vector<unsigned char>& VertCode, const std::vector<unsigned char>& FragCode);
+
+    void CreatePipeline(FVulkanDevice& Device, FVulkanRenderPass& RenderPass, uint32_t SubpassIndex, FVulkanPipelineState& State);
+
+    //销毁内置的Shader
+    void DestroyShader(FVulkanDevice& Device);
 private:
+    //用于管线的Shader
+    FVulkanShader Shader;
+
     //原生管线对象
-    VkPipeline RawPipeline = {};
+    VkPipeline RawPipeline = VK_NULL_HANDLE;
     
     //原生管线布局
     //Pipeline通过PipelineLayout, 把描述符集和Shader关联了起来
-    VkPipelineLayout RawPipelineLayout = {};
+    VkPipelineLayout RawPipelineLayout = VK_NULL_HANDLE;
 };
 
 

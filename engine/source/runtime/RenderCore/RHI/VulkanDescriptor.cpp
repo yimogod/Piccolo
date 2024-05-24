@@ -1,4 +1,5 @@
 #include "VulkanDescriptor.h"
+#include "VulkanDevice.h"
 #include <stdexcept>
 
 void FVulkanDescriptorLayout::SetBindingNum(uint32_t Num)
@@ -28,7 +29,7 @@ void FVulkanDescriptorLayout::SetBinding(uint32_t           BindingIndex,
     //没明白为何其他地方可以通过获取引用的方式赋值. 而这个方法就不行
     RawBindings[BindingIndex] = Binding;
 }
-void FVulkanDescriptorLayout::CreateLayout(VkDevice& Device)
+void FVulkanDescriptorLayout::CreateLayout(FVulkanDevice& Device)
 {
     VkDescriptorSetLayoutCreateInfo CreateInfo;
     CreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -37,7 +38,7 @@ void FVulkanDescriptorLayout::CreateLayout(VkDevice& Device)
     CreateInfo.bindingCount = RawBindings.size();
     CreateInfo.pBindings = RawBindings.data();
 
-    if (VK_SUCCESS != vkCreateDescriptorSetLayout(Device,
+    if (VK_SUCCESS != vkCreateDescriptorSetLayout(Device.GetDevice(),
                                                   &CreateInfo,
                                                   nullptr,
                                                   &RawDescriptorSetLayout))
@@ -74,14 +75,16 @@ void FVulkanDescriptorWrite::SetImage(uint32_t WriteIndex, VkDescriptorType Desc
     Write.descriptorCount = 1;
     Write.pImageInfo = Buffer;
 }
-void FVulkanDescriptorWrite::UpdateDescriptorSets(VkDevice Device, VkDescriptorSet DescriptorSet)
+
+void FVulkanDescriptorWrite::UpdateDescriptorSets(FVulkanDevice& Device, FVulkanDescriptorSet& DescriptorSet)
 {
     for (auto& Write : Writes)
     {
-        Write.dstSet = DescriptorSet;
+        Write.dstSet = DescriptorSet.GetVkDescriptorSet();
     }
 
-    vkUpdateDescriptorSets(Device,Writes.size(),
+    vkUpdateDescriptorSets(Device.GetDevice(),
+                           Writes.size(),
                            Writes.data(),
                            0,
                            nullptr);
@@ -95,16 +98,19 @@ void FVulkanDescriptorSet::SetBindingNum(uint32_t Num)
     Layout.SetBindingNum(Num);
     Write.SetWriteNum(Num);
 }
+
 void FVulkanDescriptorSet::SetLayoutBinding(uint32_t           BindingIndex,
                                             VkDescriptorType   DescriptorType,
                                             VkShaderStageFlags StageFlags)
 {
     Layout.SetBinding(BindingIndex, DescriptorType, StageFlags);
 }
+
 void FVulkanDescriptorSet::SetWriteBuffer(uint32_t WriteIndex, VkDescriptorBufferInfo* Buffer)
 {
     Write.SetBuffer(WriteIndex, Buffer);
 }
+
 void FVulkanDescriptorSet::SetWriteImage(uint32_t WriteIndex, VkDescriptorImageInfo* Buffer)
 {
     //同一槽位的binding和write的描述符类型是一样的
@@ -114,12 +120,14 @@ void FVulkanDescriptorSet::SetWriteImage(uint32_t WriteIndex, VkDescriptorImageI
     auto DescriptorType = Layout.RawBindings[WriteIndex].descriptorType;
     Write.SetImage(WriteIndex, DescriptorType, Buffer);
 }
-void FVulkanDescriptorSet::CreateDescriptorLayout(VkDevice& Device) 
+
+void FVulkanDescriptorSet::CreateDescriptorLayout(FVulkanDevice& Device)
 {
     //先创建布局
     Layout.CreateLayout(Device);
 }
-void FVulkanDescriptorSet::CreateDescriptorSet(VkDevice& Device, VkDescriptorPool& Pool)
+
+void FVulkanDescriptorSet::CreateDescriptorSet(FVulkanDevice& Device, FVulkanDescriptorPool& Pool)
 {
     if (Layout.RawDescriptorSetLayout == VK_NULL_HANDLE)
     {
@@ -130,17 +138,18 @@ void FVulkanDescriptorSet::CreateDescriptorSet(VkDevice& Device, VkDescriptorPoo
     VkDescriptorSetAllocateInfo Info;
     Info.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     Info.pNext              = nullptr;
-    Info.descriptorPool     = Pool;
+    Info.descriptorPool     = Pool.GetVkPool();
     Info.descriptorSetCount = 1;
     Info.pSetLayouts        = &Layout.RawDescriptorSetLayout;
 
     //创建描述符集
-    if (VK_SUCCESS != vkAllocateDescriptorSets(Device,&Info,&RawDescriptorSet))
+    if (VK_SUCCESS != vkAllocateDescriptorSets(Device.GetDevice(), &Info,&RawDescriptorSet))
     {
         throw std::runtime_error("allocate CreateDescriptorSet Error");
     }
 }
-void FVulkanDescriptorSet::UpdateDescriptorSets(VkDevice& Device)
+
+void FVulkanDescriptorSet::UpdateDescriptorSets(FVulkanDevice& Device)
 {
-    Write.UpdateDescriptorSets(Device, RawDescriptorSet);
+    Write.UpdateDescriptorSets(Device, *this);
 }

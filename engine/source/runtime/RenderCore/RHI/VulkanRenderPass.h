@@ -93,11 +93,11 @@ class FVulkanRenderPass
 public:
     FVulkanRenderPass() = default;
 
+    VkRenderPass& GetVkRenderPass() { return VKRenderPass; }
+
     FVulkanAttachmentDescription& GetAttachmentDesc() { return AttachmentDesc; }
 
     FVulkanSubPassDependency& GetDependency() { return Dependency; }
-
-    VkRenderPass& GetVKRenderPass() { return VKRenderPass; }
 
     //根据已经配置好的数据,创建vkRenderPass
     void CreateRenderPass(FVulkanDevice& Device);

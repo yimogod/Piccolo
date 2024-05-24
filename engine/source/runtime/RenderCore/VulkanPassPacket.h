@@ -13,16 +13,29 @@ public:
     FVulkanPassPacket() = default;
 
     //方便调用, 提供了原始vk的接口
-    VkPipeline& GetVkPipeline(uint32_t Index) { return Pipelines[Index].GetPipeline(); }
-    VkPipelineLayout& GetVkPipelineLayout(uint32_t Index) { return Pipelines[Index].GetLayout(); }
-    VkDescriptorSet& GetVkDescriptorSet(uint32_t Index) { return DescriptorSets[Index].GetDescriptorSet(); }
-    VkDescriptorSetLayout& GetVkDescriptorLayout(uint32_t Index) { return DescriptorSets[Index].GetLayout(); }
+    //VkPipeline& GetVkPipeline(uint32_t Index) { return Pipelines[Index].GetPipeline(); }
+    //VkPipelineLayout& GetVkPipelineLayout(uint32_t Index) { return Pipelines[Index].GetLayout(); }
+    //VkDescriptorSet& GetVkDescriptorSet(uint32_t Index) { return DescriptorSets[Index].GetDescriptorSet(); }
+    VkDescriptorSetLayout& GetVkDescriptorLayout(uint32_t Index) { return DescriptorSets[Index].GetVkLayout(); }
 
     //针对一些简易情况, 比如只有一个pipeline, 一个描述符集. 可以直接获取第一个值
-    VkPipeline& GetVkPipeline() { return Pipelines[0].GetPipeline(); }
-    VkPipelineLayout& GetVkPipelineLayout() { return Pipelines[0].GetLayout(); }
-    VkDescriptorSet& GetVkDescriptorSet() { return DescriptorSets[0].GetDescriptorSet(); }
-    VkDescriptorSetLayout& GetVkDescriptorLayout() { return DescriptorSets[0].GetLayout(); }
+    //VkPipeline& GetVkPipeline() { return Pipelines[0].GetPipeline(); }
+    //VkPipelineLayout& GetVkPipelineLayout() { return Pipelines[0].GetLayout(); }
+    //VkDescriptorSet& GetVkDescriptorSet() { return DescriptorSets[0].GetDescriptorSet(); }
+    //VkDescriptorSetLayout& GetVkDescriptorLayout() { return DescriptorSets[0].GetLayout(); }
+
+    //获取描述符集合
+    FVulkanDescriptorSet& GetDescriptorSet(uint32_t Index) { return DescriptorSets[Index]; }
+
+    //获取sub pass 的管线
+    FVulkanPipeline& GetPipeline(uint32_t Index) { return Pipelines[Index]; }
+
+
+    //设置本Pass共使用了几个描述符集
+    void SetDescriptorSetNum(uint32_t Size) { DescriptorSets.resize(Size); }
+
+    //设置本Pass共使用了几个Pipeline
+    void SetPipelineNum(uint32_t Size) { Pipelines.resize(Size); }
 
 
     //帧缓冲, 可能以1个也可能是3个(三缓冲)

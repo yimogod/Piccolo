@@ -4,18 +4,33 @@
 #include <vector>
 
 class FVulkanDescriptorSet;
+class FVulkanDevice;
+
+//对应VkDescriptorPool的类
+class FVulkanDescriptorPool
+{
+public:
+    FVulkanDescriptorPool() = default;
+
+    VkDescriptorPool& GetVkPool() { return RawPool; }
+
+    //TODO 兼容引擎, 目前使用m_rhi创建的pool
+    void SetPool(VkDescriptorPool& InPool) { RawPool = InPool; }
+
+private:
+    VkDescriptorPool RawPool = VK_NULL_HANDLE;
+};
 
 //描述符布局, 就是一对shader, 包含所有的vs ps所需的所有的uniform/texture的槽位信息
 //通俗点说, 就是shader中用到的输入输出的资源的排布
 //而pipeline布局其实是由描述符布局数组构成. 之前也可以认为pipeline和shader就是一一对应的
 //简单点理解, 一个描述符就是shader用的数据的描述. Layout布局的是绑定, 也就是说描述符集布局的对象是描述符
-
+//
 //而附件虽然也指向同样的imageview, 但概念上更服务于subpass
-
+//
 //粗略理解. imageview作为shader的输入是描述符集(即shader使用的资源). 作为shader的输出是附件!!!
 //所以目前看到的代码附件都是在PS里面有用
-
-
+//
 //纹理   \
 //采样器   \
 //纹理      描述集布局1
@@ -27,7 +42,7 @@ class FVulkanDescriptorSet;
 //纹理      描述集布局2
 //采样器  /
 //采样器 /
-
+//
 //在shader中 layout()声明符有两类. 
 // 1. layout(set = 0, binding = 0)表示的是描述符集绑定的资源
 // 2. layout(location = 0)表示的vs/ps的输入和输出的数据
@@ -44,7 +59,7 @@ public:
     void SetBinding(uint32_t BindingIndex, VkDescriptorType DescriptorType, VkShaderStageFlags StageFlags);
 
     //根据传入的bindling参数, 调用vulkan api创建 描述符布局
-    void CreateLayout(VkDevice& Device);
+    void CreateLayout(FVulkanDevice& Device);
 
 private:
     //描述符集布局
@@ -71,7 +86,7 @@ public:
     void SetImage(uint32_t WriteIndex, VkDescriptorType DescriptorType, VkDescriptorImageInfo* Buffer);
 
     //根据Write的数据,更新描述符集
-    void UpdateDescriptorSets(VkDevice Device, VkDescriptorSet DescriptorSet);
+    void UpdateDescriptorSets(FVulkanDevice& Device, FVulkanDescriptorSet& DescriptorSet);
 
 private:
     //描述符集对应的写入器数组
@@ -89,15 +104,16 @@ private:
 //封装了原生描述符集, 描述符布局和写入器
 //提供了更新数据的接口
 //shader通过描述符集来访问资源, 描述符集表示绑定到管线的资源的集合
-
+//
 //要访问描述符集附带的资源，描述符集必须要绑定到命令缓冲区
-
+//
 //着色器可以直接通过3种资源访问缓冲区内存的内容
 //1. uniform块提供了对存储在缓冲区对象中常量(只读)数据的快速访问
-//在着色器内就像结构体一样声明它们,使用绑定到描述符集的缓冲区资源来将这些uniform块绑定到内存上 
-//2. 着色器块(buff关键字)提供了对缓冲区对象的读写访问.和uniform块的声明类似,数据就像结构体一样组织,但可以写入数据.着色器块也支持原子操作
+//   在着色器内就像结构体一样声明它们,使用绑定到描述符集的缓冲区资源来将这些uniform块绑定到内存上
+//2. 着色器块(buff关键字)提供了对缓冲区对象的读写访问.和uniform块的声明类似
+//   数据就像结构体一样组织,但可以写入数据.着色器块也支持原子操作
 //3. 纹素缓冲区(samplerBuffer关键字)提供了对存储格式化纹素数据的长线性数组的访问能力.
-//它们是只读的,纹素缓冲区绑定会将潜在的数据格式转化为着色器读取缓冲区时期待的浮点形式
+//   它们是只读的,纹素缓冲区绑定会将潜在的数据格式转化为着色器读取缓冲区时期待的浮点形式
 
 //色器从图像中读数据时,有两种方式
 //1. 执行原始加载,从图像的指定位置直接读取格式化的或非格式化的数据
@@ -108,10 +124,10 @@ public:
     FVulkanDescriptorSet() = default;
 
     //获取描述符集对应的布局
-    VkDescriptorSetLayout& GetLayout(){ return Layout.RawDescriptorSetLayout; }
+    VkDescriptorSetLayout& GetVkLayout(){ return Layout.RawDescriptorSetLayout; }
 
     //获取原生描述符集
-    VkDescriptorSet& GetDescriptorSet(){ return RawDescriptorSet; }
+    VkDescriptorSet& GetVkDescriptorSet(){ return RawDescriptorSet; }
 
     //共需要多少个绑定或者槽位
     void SetBindingNum(uint32_t Num);
@@ -126,13 +142,14 @@ public:
     void SetWriteImage(uint32_t WriteIndex, VkDescriptorImageInfo* Buffer);
 
     //创建布局, 先有了布局, 才能创建描述集
-    void CreateDescriptorLayout(VkDevice& Device);
+    void CreateDescriptorLayout(FVulkanDevice& Device);
 
     //调用api创建描述符集
-    void CreateDescriptorSet(VkDevice& Device, VkDescriptorPool& Pool);
+    void CreateDescriptorSet(FVulkanDevice& Device, FVulkanDescriptorPool& Pool);
 
     //根据Write更新描述符集
-    void UpdateDescriptorSets(VkDevice &Device);
+    void UpdateDescriptorSets(FVulkanDevice &Device);
+
 private:
     //描述符集对应的布局
     FVulkanDescriptorLayout Layout;
@@ -142,4 +159,3 @@ private:
     //描述符vulkan对象
     VkDescriptorSet RawDescriptorSet;
 };
-
