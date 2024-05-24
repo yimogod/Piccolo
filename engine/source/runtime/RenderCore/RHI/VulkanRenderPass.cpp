@@ -1,6 +1,7 @@
 #include "VulkanRenderPass.h"
 #include <stdexcept>
 #include "vulkan/vulkan_core.h"
+#include "VulkanDevice.h"
 
 void FVulkanSubPass::SetReferenceNum(uint32_t InputNum, uint32_t ColorNum, uint32_t DepthNum)
 {
@@ -120,7 +121,7 @@ void FVulkanSubPassDependency::SetAccessMask(uint32_t      DependencyIndex,
 }
 
 
-void FVulkanRenderPass::CreateRenderPass(VkDevice Device)
+void FVulkanRenderPass::CreateRenderPass(FVulkanDevice& Device)
 {
     //组装subpass
     std::vector<VkSubpassDescription> VkSubpasses;
@@ -140,7 +141,7 @@ void FVulkanRenderPass::CreateRenderPass(VkDevice Device)
     CreateInfo.pDependencies               = Dependency.Dependencies.data();
 
     //vulkan创建render pass
-    if (vkCreateRenderPass(Device, &CreateInfo, nullptr, &VKRenderPass) !=
+    if (vkCreateRenderPass(Device.GetDevice(), &CreateInfo, nullptr, &VKRenderPass) !=
         VK_SUCCESS)
     {
         throw std::runtime_error("failed to create render pass");

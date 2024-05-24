@@ -23,34 +23,21 @@ VkExtent2D FVulkanFrameBuffer::GetFullExtent()
     return Rect;
 }
 
-void FVulkanFrameBuffer::AddFrameAttachment(FVulkanFrameBufferAttachment& Attachment)
-{
-    CachedAttachments.push_back(Attachment);
-}
-
 void FVulkanFrameBuffer::AddAttachment(FVulkanImageView& Attachment)
 {
     CachedAttachments2.push_back(Attachment);
 }
 
-void FVulkanFrameBuffer::SetFrameAttachmentFormat(uint32_t Index, VkFormat Format)
-{
-    CachedAttachments[Index].Format = Format;
-    CachedAttachments[Index].Width  = Width;
-    CachedAttachments[Index].Height = Height;
-}
-void FVulkanFrameBuffer::SetFrameAttachmentView(uint32_t Index, const VkImageView& AttachmentView)
-{
-    CachedAttachments[Index].View = AttachmentView;
-}
 void FVulkanFrameBuffer::SetClearColorValue(uint32_t Index, VkClearColorValue Value)
 {
     ClearValues[Index].color = Value;
 }
+
 void FVulkanFrameBuffer::SetClearDepthValue(uint32_t Index, VkClearDepthStencilValue Value)
 {
     ClearValues[Index].depthStencil = Value;
 }
+
 void FVulkanFrameBuffer::SetClearColors_Black()
 {
     for (auto& Value : ClearValues)
@@ -58,6 +45,7 @@ void FVulkanFrameBuffer::SetClearColors_Black()
         Value.color = {{0.0f, 0.0f, 0.0f,1.0f}};
     }
 }
+
 void FVulkanFrameBuffer::CreateFrameBuffer(VkDevice& Device, VkRenderPass& RenderPass, std::vector<VkImageView>& SwapChainView)
 {
     CachedFramebuffers.resize(SwapChainView.size());
@@ -67,12 +55,12 @@ void FVulkanFrameBuffer::CreateFrameBuffer(VkDevice& Device, VkRenderPass& Rende
     {
         //这个view除了添加之前的普通imageview, 还需要加上交换链的View
         std::vector<VkImageView> View;
-        View.resize(CachedAttachments.size() + 1);
+        View.resize(CachedAttachments2.size() + 1);
         for (int j = 0; j < View.size() - 1; ++j)
         {
-            View[j] = CachedAttachments[j].View;
+            View[j] = CachedAttachments2[j].GetImageView();
         }
-        View[CachedAttachments.size()] = SwapChainView[i];
+        View[CachedAttachments2.size()] = SwapChainView[i];
 
         CreateFrameBufferInner(Device, RenderPass, View, 1, i);
     }
@@ -88,10 +76,10 @@ void FVulkanFrameBuffer::CreateFrameBuffer(VkDevice& Device, VkRenderPass& Rende
 
     //这个view除了添加之前的普通imageview, 还需要加上交换链的View
     std::vector<VkImageView> View;
-    View.resize(CachedAttachments.size());
+    View.resize(CachedAttachments2.size());
     for (int i = 0; i < View.size(); ++i)
     {
-        View[i] = CachedAttachments[i].View;
+        View[i] = CachedAttachments2[i].GetImageView();
     }
 
     CreateFrameBufferInner(Device, RenderPass, View, FrameLayers, 0);

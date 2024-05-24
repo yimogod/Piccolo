@@ -136,43 +136,6 @@ void FVulkanUtility::CreateImage(VkDevice Device,
     return ImageView;
 }
 
-//TODO 参数太多。 想办法放入FVulkanFrameBufferAttachment成员方法一些
- void FVulkanUtility::CreateFrameAttachment(FVulkanFrameBufferAttachment& OutAttachment,
-                                               VkDevice                      Device,
-                                               VkPhysicalDevice              Gpu,
-                                               VkImageTiling                 Tiling,
-                                               VkImageUsageFlags             Usage,
-                                               VkMemoryPropertyFlags         MemoryProperty,
-                                               VkImageAspectFlags            AspectFlags,
-                                               VkImageViewType               ViewType,
-                                               uint32_t                      ArrayLayers,
-                                               uint32_t                      MipLevelCount)
- {
-    //确保OutAttachment的格式已经有正确的值
-
-    //创建图片
-    CreateImage(Device,
-                Gpu,
-                OutAttachment.Width,
-                OutAttachment.Height,
-                OutAttachment.Format,
-                ArrayLayers,
-                Tiling,
-                Usage,
-                MemoryProperty,
-                OutAttachment.Image,
-                OutAttachment.Mem);
-
-    //创建ImageView
-    OutAttachment.View = CreateImageView(Device,
-                                         OutAttachment.Image,
-                                         OutAttachment.Format,
-                                         AspectFlags,
-                                         ViewType,
-                                         MipLevelCount,
-                                         ArrayLayers);
- }
-
  VkFormat FVulkanUtility::FindDepthFormat(VkPhysicalDevice GPU)
  {
     const std::vector<VkFormat>& candidates =

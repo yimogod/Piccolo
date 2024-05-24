@@ -5,25 +5,6 @@
 #include "vulkan/vulkan_core.h"
 #include <vector>
 
-//frame buffer用到的附件数据
-//如果是通过imageview来创建的, 那么本类里面面的其他属性都是无效的
-//里面最重要的数据是ImageView, 其他的数据都是为了得到view而创建的中间对象(Image不一样)
-struct FVulkanFrameBufferAttachment
-{
-    //开辟的image的尺寸. 比如平行光的shadow map, 就开辟了4096*4096.
-    uint32_t Width = 0;
-    uint32_t Height = 0;
-
-    //对应的如何使用图片的View
-    VkImageView View;
-
-    //图片数据
-    VkImage Image;
-    //存放图片的显存
-    VkDeviceMemory Mem;
-    //图片格式
-    VkFormat Format = VK_FORMAT_UNDEFINED;
-};
 
 //framebuffer有两种使用情境
 //1是只有一个VkFrameBuffer, 在pioccolo中, 如果不做present, 一个足够
@@ -46,8 +27,8 @@ public:
     VkFramebuffer& GetFrameBuffer(uint32_t Index) { return CachedFramebuffers[Index]; }
     //获取当前正在使用的FrameBuffer
     VkFramebuffer& GetFrameBuffer() { return CachedFramebuffers[CurrBufferIndex]; }
-    //获取帧绑定, 描述符(VkDescriptorImageInfo)中会用到
-    FVulkanFrameBufferAttachment& GetAttachment(uint32_t Index) { return CachedAttachments[Index]; }
+
+    VkFormat GetAttachmentFormat(uint32_t Index){ return CachedAttachments2[Index].GetFormat(); }
 
     //获取frame充满的viewport
     VkViewport GetFullViewport();
@@ -58,13 +39,9 @@ public:
 
     //设置马上要用到的vkframebuffer索引.
     void SetCurrentBufferIndex(uint32_t Index) { CurrBufferIndex = Index; }
-    //添加普通的附件. 不包含SwapChain的imageview. 交换链的imageview要通过
-    void AddFrameAttachment(FVulkanFrameBufferAttachment& Attachment);
     void AddAttachment(FVulkanImageView& Attachment);
 
-    void SetFrameAttachmentNum(uint32_t Num) { CachedAttachments.resize(Num); }
-    void SetFrameAttachmentFormat(uint32_t Index, VkFormat Format);
-    void SetFrameAttachmentView(uint32_t Index, const VkImageView& AttachmentView);
+    void SetFrameAttachmentNum(uint32_t Num) { CachedAttachments2.resize(Num); }
 
     //设置ClearValue的值
     void SetClearColorValue(uint32_t Index, VkClearColorValue Value);
@@ -89,10 +66,6 @@ private:
 
     // 自定义的ImageView, maincamerapass用到了7个.
     // 另外加上交换链所需的深度和swapchianimageview, 共9个给renderpas使用
-
-    //用到的所有的帧缓冲附件. 这个附件个数和描述符集数组(即RenderPass用到的所有的附件)所有用到的个数相同
-    //附件仅用于PS, 可以粗暴的将附件理解为RenderTarget
-    std::vector<FVulkanFrameBufferAttachment> CachedAttachments;
 
     //用到的所有的帧缓冲附件. 这个附件个数和描述符集数组(即RenderPass用到的所有的附件)所有用到的个数相同
     //附件仅用于PS, 可以粗暴的将附件理解为RenderTarget

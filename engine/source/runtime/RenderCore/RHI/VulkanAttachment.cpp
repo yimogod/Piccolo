@@ -41,7 +41,7 @@ void FVulkanAttachmentDescription::SetLoadAndStore(uint32_t AttachmentIndex, VkA
     Attachment.storeOp = StoreOp;
 }
 
-void FVulkanAttachmentDescription::SetStencilLoadAndStore(uint32_t             AttachmentIndex,
+void FVulkanAttachmentDescription::SetStencilLoadAndStore(uint32_t AttachmentIndex,
                                                           VkAttachmentLoadOp  LoadOp,
                                                           VkAttachmentStoreOp StoreOp)
 {
@@ -50,7 +50,7 @@ void FVulkanAttachmentDescription::SetStencilLoadAndStore(uint32_t             A
     Attachment.stencilStoreOp = StoreOp;
 }
 
-void FVulkanAttachmentDescription::SetLayout(uint32_t       AttachmentIndex,
+void FVulkanAttachmentDescription::SetLayout(uint32_t AttachmentIndex,
                                              VkImageLayout InitialLayout,
                                              VkImageLayout FinalLayout)
 {

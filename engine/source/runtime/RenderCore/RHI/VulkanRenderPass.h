@@ -5,6 +5,8 @@
 
 #include "VulkanAttachment.h"
 
+class FVulkanDevice;
+
 //将 VkSubpassDescription 以及相关数据抽象成为了子通道
 class FVulkanSubPass
 {
@@ -98,7 +100,7 @@ public:
     VkRenderPass& GetVKRenderPass() { return VKRenderPass; }
 
     //根据已经配置好的数据,创建vkRenderPass
-    void CreateRenderPass(VkDevice Device);
+    void CreateRenderPass(FVulkanDevice& Device);
 
     //设置附件个数
     void SetAttachmentNum(uint32_t Num) { AttachmentDesc.SetAttachmentNum(Num); }

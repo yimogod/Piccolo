@@ -67,22 +67,22 @@ namespace Piccolo
 
 
         ////////////////////////////// TODO 兼容代码  ///////////////////////
-        FVulkanFrameBufferAttachment Attachment_0;
-        Attachment_0.Format = VK_FORMAT_R32_SFLOAT;
-        Attachment_0.Width = Attachment_0.Height = Packet.FrameBuffer.Width; //宽高一样
-        Attachment_0.Image = View_0.GetImage();
-        Attachment_0.View = View_0.GetImageView();
-        Attachment_0.Mem = View_0.GetMem();
-        Packet.FrameBuffer.AddFrameAttachment(Attachment_0);
-
-
-        FVulkanFrameBufferAttachment Attachment_1;
-        Attachment_1.Format = Vulkan->DepthFormat;
-        Attachment_1.Width = Attachment_1.Height = Packet.FrameBuffer.Height;
-        Attachment_1.Image = View_1.GetImage();
-        Attachment_1.View = View_1.GetImageView();
-        Attachment_1.Mem = View_1.GetMem();
-        Packet.FrameBuffer.AddFrameAttachment(Attachment_1);
+//        FVulkanFrameBufferAttachment Attachment_0;
+//        Attachment_0.Format = VK_FORMAT_R32_SFLOAT;
+//        Attachment_0.Width = Attachment_0.Height = Packet.FrameBuffer.Width; //宽高一样
+//        Attachment_0.Image = View_0.GetImage();
+//        Attachment_0.View = View_0.GetImageView();
+//        Attachment_0.Mem = View_0.GetMem();
+//        Packet.FrameBuffer.AddFrameAttachment(Attachment_0);
+//
+//
+//        FVulkanFrameBufferAttachment Attachment_1;
+//        Attachment_1.Format = Vulkan->DepthFormat;
+//        Attachment_1.Width = Attachment_1.Height = Packet.FrameBuffer.Height;
+//        Attachment_1.Image = View_1.GetImage();
+//        Attachment_1.View = View_1.GetImageView();
+//        Attachment_1.Mem = View_1.GetMem();
+//        Packet.FrameBuffer.AddFrameAttachment(Attachment_1);
 
 
 
@@ -90,8 +90,8 @@ namespace Piccolo
         Framebuffer.attachments.resize(2);
 
         // color
-        FVulkanFrameBufferAttachment Att1   = Packet.FrameBuffer.GetAttachment(0);
-        Framebuffer.attachments[0].format = (RHIFormat)Att1.Format;
+        //FVulkanFrameBufferAttachment Att1   = Packet.FrameBuffer.GetAttachment(0);
+        Framebuffer.attachments[0].format = (RHIFormat)View_0.GetFormat();
         
         auto image = new VulkanImage();
         image->setResource(View_0.GetImage());
@@ -107,8 +107,8 @@ namespace Piccolo
 
 
         // depth
-        FVulkanFrameBufferAttachment Att2   = Packet.FrameBuffer.GetAttachment(1);
-        Framebuffer.attachments[1].format = (RHIFormat)Att2.Format;
+        //FVulkanFrameBufferAttachment Att2   = Packet.FrameBuffer.GetAttachment(1);
+        Framebuffer.attachments[1].format = (RHIFormat)View_1.GetFormat();
 
         auto image2 = new VulkanImage();
         image2->setResource(View_1.GetImage());
@@ -122,6 +122,7 @@ namespace Piccolo
         memory->setResource(View_1.GetMem());
         Framebuffer.attachments[1].mem = memory2;
     }
+
     void UShadowPass::setupRenderPass()
     {
         //所有的renderpass用到了两个附件, 就是上面创建的一个深度, 一个color附件
@@ -129,13 +130,13 @@ namespace Piccolo
         auto& AttachDesc = Packet.RenderPass.GetAttachmentDesc();
 
         //阴影(还是着色?得看shader的实现)的颜色R16
-        AttachDesc.SetFormat(0, Packet.FrameBuffer.GetAttachment(0).Format);
+        AttachDesc.SetFormat(0, Packet.FrameBuffer.GetAttachmentFormat(0));
         //这个附件会清理chip memory, 且将chip数据写入到system memory
         AttachDesc.SetLoadAndStore(0, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE);
         AttachDesc.SetLayout(0, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         //影子(还是着色?)深度
-        AttachDesc.SetFormat(1, Packet.FrameBuffer.GetAttachment(1).Format);
+        AttachDesc.SetFormat(1, Packet.FrameBuffer.GetAttachmentFormat(1));
         //深度的话,也会清理chip memory, 但不会回写到system memory -- 根据UE, depth buffer确实也不会写回system memory
         AttachDesc.SetLoadAndStore(1, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE);
         AttachDesc.SetLayout(1, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
@@ -164,7 +165,7 @@ namespace Piccolo
                                  0); //不访问
         Dependency.SetFlag(0, 0); // NOT BY REGION
 
-        Packet.RenderPass.CreateRenderPass(m_rhi->m_device);
+        Packet.RenderPass.CreateRenderPass(Vulkan->Device2);
 
 
 
