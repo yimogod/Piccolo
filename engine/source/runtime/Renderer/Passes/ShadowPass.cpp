@@ -75,15 +75,15 @@ namespace Piccolo
         Framebuffer.attachments[0].format = (RHIFormat)View_0.GetFormat();
         
         auto image = new VulkanImage();
-        image->setResource(View_0.GetImage());
+        image->setResource(View_0.GetVkImage());
         Framebuffer.attachments[0].image = image;
 
         auto image_view = new VulkanImageView();
-        image_view->setResource(View_0.GetImageView());
+        image_view->setResource(View_0.GetVkView());
         Framebuffer.attachments[0].view  = image_view;
 
         auto memory = new VulkanDeviceMemory();
-        memory->setResource(View_0.GetMem());
+        memory->setResource(View_0.GetVkMem());
         Framebuffer.attachments[0].mem = memory;
 
 
@@ -91,15 +91,15 @@ namespace Piccolo
         Framebuffer.attachments[1].format = (RHIFormat)View_1.GetFormat();
 
         auto image2 = new VulkanImage();
-        image2->setResource(View_1.GetImage());
+        image2->setResource(View_1.GetVkImage());
         Framebuffer.attachments[1].image = image2;
 
         auto image_view2 = new VulkanImageView();
-        image_view2->setResource(View_1.GetImageView());
+        image_view2->setResource(View_1.GetVkView());
         Framebuffer.attachments[1].view = image_view2;
 
         auto memory2 = new VulkanDeviceMemory();
-        memory->setResource(View_1.GetMem());
+        memory->setResource(View_1.GetVkMem());
         Framebuffer.attachments[1].mem = memory2;
     }
 
@@ -162,7 +162,7 @@ namespace Piccolo
 
         //TODO 兼容旧引擎
     	Framebuffer.framebuffer = new VulkanFramebuffer();
-        ((VulkanFramebuffer*)Framebuffer.framebuffer)->setResource(Packet.FrameBuffer.GetFrameBuffer());
+        ((VulkanFramebuffer*)Framebuffer.framebuffer)->setResource(Packet.FrameBuffer.GetVkFrameBuffer());
     }
 
     void UShadowPass::setupDescriptorSetLayout()

@@ -37,6 +37,25 @@ public:
     VkImageTiling Tiling = VkImageTiling::VK_IMAGE_TILING_OPTIMAL;
 
     //图片的用处, VkImageUsageFlagBits 的值
+    // VK_IMAGE_USAGE_TRANSFER_SRC_BIT 该图像可以被用作一个传输命令的源。
+    // VK_IMAGE_USAGE_TRANSFER_DST_BIT 该图像可以被用作一个传输命令的目标。
+    // VK_IMAGE_USAGE_SAMPLED_BIT 该图像可以被用于创建一个VkImageView，
+    //   用于占用一个类型为 VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE 或 VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
+    //   的VkDescriptorSet槽，并被一个shader采样。
+    // VK_IMAGE_USAGE_STORAGE_BIT该图像可以用于创建一个VkImageView，
+    //   用于占用VkDescriptorSet的类型为 VK_DESCRIPTOR_TYPE_STORAGE_IMAGE 的一个槽。
+    // VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT该图像可以被用于创建一个VkImageView
+    //   作为一个VkFramebuffer中的一个color或resolve附件。
+    // VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT指出该图像可以用于创建一个VkImageView，
+    //   用作一个VkFramebuffer中的 depth/stencil 或 depth/stencil resolve 附件。
+    // VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT具体实现可能会支持使用
+    //   VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT 的内存分配，以使用此usage后备一副图像。
+    //   表示图形数据的生存周期很短. 因此没必要写入设备内存
+    //   对于任一可以用于创建一个用作color，resolve，depth/stencil，或input附件的VkImageView的图像，
+    //   可以设置此bit.
+    // VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT指出该图像可以被用于创建一个VkImageView，
+    //   用于占用VkDescriptorSet的一个类型为VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT的槽；
+    //   可以从一个shader中作为一个input附件被读取，并且在一个framebuffer中被用作一个input附件。
     VkImageUsageFlags Usage = VkImageUsageFlagBits::VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
     //图片的内存性质, 默认是显存
@@ -77,9 +96,9 @@ public:
 
     FVulkanImageView(FVulkanImage& InImage, uint32_t InMipNum = 1);
 
-    VkImageView& GetImageView() { return RawView; }
-    VkImage& GetImage() { return Image.RawImage; }
-    VkDeviceMemory& GetMem() { return Image.RawMemory; }
+    VkImageView& GetVkView() { return RawView; }
+    VkImage& GetVkImage() { return Image.RawImage; }
+    VkDeviceMemory& GetVkMem() { return Image.RawMemory; }
     VkFormat GetFormat() { return Image.RawFormat; }
     uint32_t GetWidth() { return Image.Width; }
     uint32_t GetHeight() { return Image.Height; }

@@ -14,6 +14,7 @@ namespace Piccolo
         void preparePassData(std::shared_ptr<RenderResourceBase> render_resource) override final;
         void draw() override final;
 
+        //TODO 旧引擎
         void setPerMeshLayout(RHIDescriptorSetLayout* layout) { m_per_mesh_layout = layout; }
 
     private:

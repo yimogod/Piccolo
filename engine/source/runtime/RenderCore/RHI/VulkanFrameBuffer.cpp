@@ -60,7 +60,7 @@ void FVulkanFrameBuffer::CreateFrameBuffer(FVulkanDevice& Device, FVulkanRenderP
         Views.resize(CachedAttachments.size() + 1);
         for (int j = 0; j < Views.size() - 1; ++j)
         {
-            Views[j] = CachedAttachments[j].GetImageView();
+            Views[j] = CachedAttachments[j].GetVkView();
         }
 
         //在设置swapchain的view
@@ -86,7 +86,7 @@ void FVulkanFrameBuffer::CreateFrameBuffer(FVulkanDevice& Device, FVulkanRenderP
     View.resize(CachedAttachments.size());
     for (int i = 0; i < View.size(); ++i)
     {
-        View[i] = CachedAttachments[i].GetImageView();
+        View[i] = CachedAttachments[i].GetVkView();
     }
 
     CreateFrameBufferInner(Device.GetVkDevice(), RenderPass.GetVkRenderPass(), View, FrameLayers, 0);

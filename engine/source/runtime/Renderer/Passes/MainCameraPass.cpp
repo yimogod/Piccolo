@@ -22,6 +22,9 @@ namespace Piccolo
     {
         URenderPass::initialize(nullptr);
 
+        Packet.FrameBuffer.Width  = m_rhi->m_swapchain_extent.width;
+        Packet.FrameBuffer.Height = m_rhi->m_swapchain_extent.height;
+
         //总结一句
         // shader的输入imageview/buffer是通过描述符集绑定的
         // shader的输出是subpass输出到Attachment附件的. 而这些Attachment会根据索引引用到FrameBuffer开辟的ImageView
@@ -57,129 +60,93 @@ namespace Piccolo
     {
         //gbuffer用到的5个缓冲区 + 后处理用到的2个
         //所以本pass总共用到了7个附件!!
+
+        //GBufferA
+        FVulkanImageView View_0;
+        View_0.SetSize(Packet.FrameBuffer.Width, Packet.FrameBuffer.Height);
+        View_0.SetFormat(VK_FORMAT_R8G8B8A8_UNORM);
+        //可作为 subpass 的输入输出, 还可用于传输
+        View_0.SetUsage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+        View_0.CreateImageView_Color(Vulkan->Device2);
+        Packet.FrameBuffer.AddAttachment(View_0);
+
+        //后面几个buffer的usage都一样
+        VkImageUsageFlags Usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
+        //GBufferB
+        FVulkanImageView View_1;
+        View_1.SetSize(Packet.FrameBuffer.Width, Packet.FrameBuffer.Height);
+        View_1.SetFormat(VK_FORMAT_R8G8B8A8_UNORM);
+        //可作为 subpass 的输入输出, 和短暂的附件
+        View_1.SetUsage(Usage);
+        View_1.CreateImageView_Color(Vulkan->Device2);
+        Packet.FrameBuffer.AddAttachment(View_1);
+
+        //GBufferC
+        FVulkanImageView View_2;
+        View_2.SetSize(Packet.FrameBuffer.Width, Packet.FrameBuffer.Height);
+        View_2.SetFormat(VK_FORMAT_R8G8B8A8_SRGB);
+        View_2.SetUsage(Usage);
+        View_2.CreateImageView_Color(Vulkan->Device2);
+        Packet.FrameBuffer.AddAttachment(View_2);
+
+        //GBuffer Odd
+        FVulkanImageView View_3;
+        View_3.SetSize(Packet.FrameBuffer.Width, Packet.FrameBuffer.Height);
+        View_3.SetFormat(VK_FORMAT_R16G16B16A16_SFLOAT);
+        View_3.SetUsage(Usage);
+        View_3.CreateImageView_Color(Vulkan->Device2);
+        Packet.FrameBuffer.AddAttachment(View_3);
+
+        //GBuffer Even
+        FVulkanImageView View_4;
+        View_4.SetSize(Packet.FrameBuffer.Width, Packet.FrameBuffer.Height);
+        View_4.SetFormat(VK_FORMAT_R16G16B16A16_SFLOAT);
+        View_4.SetUsage(Usage);
+        View_4.CreateImageView_Color(Vulkan->Device2);
+        Packet.FrameBuffer.AddAttachment(View_4);
+
+
+        //后处理需要的两个图片, usage一样
+        Usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+
+        //PPBuffer Odd
+        FVulkanImageView View_5;
+        View_5.SetSize(Packet.FrameBuffer.Width, Packet.FrameBuffer.Height);
+        View_5.SetFormat(VK_FORMAT_R16G16B16A16_SFLOAT);
+        View_5.SetUsage(Usage);
+        View_5.CreateImageView_Color(Vulkan->Device2);
+        Packet.FrameBuffer.AddAttachment(View_5);
+
+        //PPBuffer Even
+        FVulkanImageView View_6;
+        View_6.SetSize(Packet.FrameBuffer.Width, Packet.FrameBuffer.Height);
+        View_6.SetFormat(VK_FORMAT_R16G16B16A16_SFLOAT);
+        View_6.SetUsage(Usage);
+        View_6.CreateImageView_Color(Vulkan->Device2);
+        Packet.FrameBuffer.AddAttachment(View_6);
+
+
+
         //TODO 之后会把后处理的pass拆出去
+        // TODO 兼容引擎
         Framebuffer.attachments.resize(E_main_camera_pass_custom_attachment_count +
-                                         E_main_camera_pass_post_process_attachment_count);
+                                       E_main_camera_pass_post_process_attachment_count);
 
         Framebuffer.attachments[E_main_camera_pass_gbuffer_a].format          = RHI_FORMAT_R8G8B8A8_UNORM;
         Framebuffer.attachments[E_main_camera_pass_gbuffer_b].format          = RHI_FORMAT_R8G8B8A8_UNORM;
         Framebuffer.attachments[E_main_camera_pass_gbuffer_c].format          = RHI_FORMAT_R8G8B8A8_SRGB;
         Framebuffer.attachments[E_main_camera_pass_backup_buffer_odd].format  = RHI_FORMAT_R16G16B16A16_SFLOAT;
         Framebuffer.attachments[E_main_camera_pass_backup_buffer_even].format = RHI_FORMAT_R16G16B16A16_SFLOAT;
-
-        //对上面5个创建的frame buffer创建image资源
-        //基本上就是GBuffer相关
-
-        //IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT表示图形数据的生存周期很短. 因此没必要写入设备内存
-        //IMAGE_USAGE_TRANSFER_SRC_BIT表示缓冲可以被用作内存传输操作的数据来源
-
-        //0~4, 5个GBuffer
-        for (int i = 0; i < E_main_camera_pass_custom_attachment_count; ++i)
-        {
-            VkImage Image;
-            VkDeviceMemory Mem;
-
-            if (i == E_main_camera_pass_gbuffer_a)
-            {
-                VulkanUtil::createImage(m_rhi->m_physical_device,
-                                        m_rhi->m_device,
-                                        m_rhi->m_swapchain_extent.width,
-                                        m_rhi->m_swapchain_extent.height,
-                                        (VkFormat)Framebuffer.attachments[i].format,
-                                        VK_IMAGE_TILING_OPTIMAL,
-                                        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-                                            VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
-                                            VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-                                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                                        Image,
-                                        Mem,
-                                        0,
-                                        1,
-                                        1);
-            }
-            else
-            {
-                VulkanUtil::createImage(m_rhi->m_physical_device,
-                                        m_rhi->m_device,
-                                        m_rhi->m_swapchain_extent.width,
-                                        m_rhi->m_swapchain_extent.height,
-                                        (VkFormat)Framebuffer.attachments[i].format,
-                                        VK_IMAGE_TILING_OPTIMAL,
-                                        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-                                            VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
-                                            VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT,
-                                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                                        Image,
-                                        Mem,
-                                        0,
-                                        1,
-                                        1);
-            }
-
-            
-            VkImageView VI = VulkanUtil::createImageView(m_rhi->m_device,
-                                            Image,
-                                            (VkFormat)Framebuffer.attachments[i].format,
-                                            VK_IMAGE_ASPECT_COLOR_BIT,
-                                            VK_IMAGE_VIEW_TYPE_2D,
-                                            1,
-                                            1);
-            
-            //TODO 兼容引擎
-            auto vim = new VulkanImage();
-            vim->setResource(Image);
-            Framebuffer.attachments[i].image = vim;
-
-            auto MM = new VulkanDeviceMemory();
-            MM->setResource(Mem);
-            Framebuffer.attachments[i].mem = MM;
-
-            auto VIV = new VulkanImageView();
-            VIV->setResource(VI);
-            Framebuffer.attachments[i].view = VIV;
-        }
-
-
-        // 创建后处理Buffer,
-        // image usage flags和上面不一样
         Framebuffer.attachments[E_main_camera_pass_post_process_buffer_odd].format  = RHI_FORMAT_R16G16B16A16_SFLOAT;
         Framebuffer.attachments[E_main_camera_pass_post_process_buffer_even].format = RHI_FORMAT_R16G16B16A16_SFLOAT;
-
-        //5, 6 两个后处理
-        for (int i = E_main_camera_pass_custom_attachment_count;
-             i < E_main_camera_pass_custom_attachment_count + E_main_camera_pass_post_process_attachment_count;
-             ++i)
+        for (int i = 0; i < E_main_camera_pass_custom_attachment_count + E_main_camera_pass_post_process_attachment_count; ++i)
         {
-            VkImage        Image;
-            VkDeviceMemory Mem;
+            FVulkanImageView& View = Packet.FrameBuffer.GetAttachment(i);
 
-            //input, color, sampler
-            VulkanUtil::createImage(m_rhi->m_physical_device,
-                                    m_rhi->m_device,
-                                    m_rhi->m_swapchain_extent.width,
-                                    m_rhi->m_swapchain_extent.height,
-                                    (VkFormat)Framebuffer.attachments[i].format,
-                                    VK_IMAGE_TILING_OPTIMAL,
-                                    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-                                        VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
-                                        VK_IMAGE_USAGE_SAMPLED_BIT,
-                                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                                    Image,
-                                    Mem,
-                                    0,
-                                    1,
-                                    1);
+            VkImage& Image = View.GetVkImage();
+            VkImageView& VI = View.GetVkView();
+            VkDeviceMemory& Mem = View.GetVkMem();
 
-
-            VkImageView VI = VulkanUtil::createImageView(m_rhi->m_device,
-                                                         Image,
-                                                         (VkFormat)Framebuffer.attachments[i].format,
-                                                         VK_IMAGE_ASPECT_COLOR_BIT,
-                                                         VK_IMAGE_VIEW_TYPE_2D,
-                                                         1,
-                                                         1);
-
-            // TODO 兼容引擎
             auto vim = new VulkanImage();
             vim->setResource(Image);
             Framebuffer.attachments[i].image = vim;

@@ -138,8 +138,12 @@ void FVulkanUtility::CreateImage(VkDevice Device,
 
  VkFormat FVulkanUtility::FindDepthFormat(VkPhysicalDevice GPU)
  {
-    const std::vector<VkFormat>& candidates =
-              {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT};
+    const std::vector<VkFormat>& candidates = {
+        VK_FORMAT_D32_SFLOAT,
+        VK_FORMAT_D32_SFLOAT_S8_UINT,
+        VK_FORMAT_D24_UNORM_S8_UINT
+    };
+
     VkFormatFeatureFlags features = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
     for (VkFormat format : candidates)

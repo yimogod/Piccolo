@@ -10,7 +10,6 @@
 //1是只有一个VkFrameBuffer, 在pioccolo中, 如果不做present, 一个足够
 //2是展示到屏幕, 因为用了3缓冲技术, 所以会有三个framebuffer
 //除了是VkFrameBuffer的封装外, 还缓存了自已用到的所有的附件
-//TODO 将普通的FrameBuffer和PresentFrameBuffer拆分开?
 class FVulkanFrameBuffer
 {
     friend class FVulkanCommandBuffer;
@@ -24,11 +23,14 @@ public:
     uint32_t Height;
 
     //获取对应的FrameBuffer
-    VkFramebuffer& GetFrameBuffer(uint32_t Index) { return CachedFramebuffers[Index]; }
+    VkFramebuffer& GetVkFrameBuffer(uint32_t Index) { return CachedFramebuffers[Index]; }
     //获取当前正在使用的FrameBuffer
-    VkFramebuffer& GetFrameBuffer() { return CachedFramebuffers[CurrBufferIndex]; }
-
+    VkFramebuffer& GetVkFrameBuffer() { return CachedFramebuffers[CurrBufferIndex]; }
+    //获取附件的格式
     VkFormat GetAttachmentFormat(uint32_t Index){ return CachedAttachments[Index].GetFormat(); }
+    //获取附件
+    FVulkanImageView& GetAttachment(uint32_t Index){ return CachedAttachments[Index]; }
+
 
     //获取frame充满的viewport
     VkViewport GetFullViewport();
