@@ -24,7 +24,6 @@ namespace Piccolo
     void RenderScene::setVisibleNodesReference()
     {
         URenderPass::m_visiable_nodes.p_directional_light_visible_mesh_nodes = &m_directional_light_visible_mesh_nodes;
-        URenderPass::m_visiable_nodes.p_point_lights_visible_mesh_nodes      = &m_point_lights_visible_mesh_nodes;
         URenderPass::m_visiable_nodes.p_main_camera_visible_mesh_nodes       = &m_main_camera_visible_mesh_nodes;
         URenderPass::m_visiable_nodes.p_axis_node                            = &m_axis_node;
     }

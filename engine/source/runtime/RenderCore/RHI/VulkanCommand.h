@@ -2,6 +2,7 @@
 #include "vulkan/vulkan_core.h"
 #include <vector>
 
+class FVulkanDevice;
 class FVulkanFrameBuffer;
 class FVulkanPipeline;
 class FVulkanDescriptorSet;
@@ -14,15 +15,18 @@ class FVulkanCommandPool
 public:
     FVulkanCommandPool() = default;
 
-    void CreateCommandPool(VkDevice& Device);
-
-    void Destroy(VkDevice& Device);
-
     //------ vulkan 对象返回 ---------
-    VkCommandPool& GetPool() { return RawCommandPool; }
+    VkCommandPool& GetVkPool() { return RawPool; }
     //------ vulkan 对象返回 ---------
+
+    //TODO 兼容引擎, 目前使用m_rhi创建的pool
+    void SetPool(VkCommandPool& InPool) { RawPool = InPool; }
+
+    void CreateCommandPool(FVulkanDevice& Device, uint32_t QueueFamilyIndex);
+
+    void Destroy(FVulkanDevice& Device);
 private:
-    VkCommandPool RawCommandPool = VK_NULL_HANDLE;
+    VkCommandPool RawPool = VK_NULL_HANDLE;
 };
 
 class FVulkanCommandBuffer
@@ -34,13 +38,13 @@ public:
 
     explicit FVulkanCommandBuffer(VkCommandBuffer& Buffer);
 
-    VkCommandBuffer& GetCommandBuffer() { return RawCommandBuffer; }
+    VkCommandBuffer& GetVkCommandBuffer() { return RawCommandBuffer; }
     
     //申请单个命令, 原始api可以申请多个. 这个参考picco代码, 发现都是单个申请的, 所以这里简化了API
-    void AllocateCommandBuffer(VkDevice& Device, VkCommandPool& Pool);
+    void AllocateCommandBuffer(FVulkanDevice& Device, FVulkanCommandPool& Pool);
 
     //对于单次的重操作的指令, 用完后就销毁.
-    void Destroy(VkDevice& Device, VkCommandPool& CommandPool);
+    void Destroy(FVulkanDevice& Device, FVulkanCommandPool& CommandPool);
 
     //开始指令操作
     void Begin();

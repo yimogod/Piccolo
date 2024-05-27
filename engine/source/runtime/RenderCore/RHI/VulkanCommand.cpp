@@ -1,12 +1,23 @@
 #include "VulkanCommand.h"
-#include "vulkan/vulkan_core.h"
 #include "VulkanFrameBuffer.h"
+#include "vulkan/vulkan_core.h"
+#include <stdexcept>
 
-void FVulkanCommandPool::CreateCommandPool(VkDevice& Device)
+void FVulkanCommandPool::CreateCommandPool(FVulkanDevice& Device, uint32_t QueueFamilyIndex)
 {
+    VkCommandPoolCreateInfo CreateInfo {};
+    CreateInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    CreateInfo.pNext            = nullptr;
+    CreateInfo.flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    CreateInfo.queueFamilyIndex = QueueFamilyIndex;
 
+    if (vkCreateCommandPool(Device.GetVkDevice(), &CreateInfo, nullptr, &RawPool) != VK_SUCCESS)
+    {
+        throw std::runtime_error("vk create command pool error");
+    }
 }
-void FVulkanCommandPool::Destroy(VkDevice& Device)
+
+void FVulkanCommandPool::Destroy(FVulkanDevice& Device)
 {
 
 }
@@ -15,22 +26,37 @@ FVulkanCommandBuffer::FVulkanCommandBuffer(VkCommandBuffer& Buffer)
 {
     RawCommandBuffer = Buffer;
 }
-void FVulkanCommandBuffer::AllocateCommandBuffer(VkDevice& Device, VkCommandPool& Pool)
+
+void FVulkanCommandBuffer::AllocateCommandBuffer(FVulkanDevice& Device, FVulkanCommandPool& CommandPool)
+{
+    VkCommandBufferAllocateInfo CreateInfo {};
+    CreateInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    CreateInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    CreateInfo.commandBufferCount = 1U;
+
+    CreateInfo.commandPool = CommandPool.GetVkPool();
+    if (vkAllocateCommandBuffers(Device.GetVkDevice(), &CreateInfo, &RawCommandBuffer) != VK_SUCCESS)
+    {
+        throw std::runtime_error("allocate command buffers Error");
+    }
+}
+
+void FVulkanCommandBuffer::Destroy(FVulkanDevice& Device, FVulkanCommandPool& CommandPool)
 {
 
 }
-void FVulkanCommandBuffer::Destroy(VkDevice& Device, VkCommandPool& CommandPool)
-{
 
-}
 void FVulkanCommandBuffer::Begin()
 {
 
 }
+
 void FVulkanCommandBuffer::End()
 {
 
 }
+
+
 void FVulkanCommandBuffer::SubmitSync(VkQueue GraphicsQueue)
 {
 

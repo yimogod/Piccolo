@@ -308,6 +308,7 @@ namespace Piccolo
         };
 
         //合批后的数据.
+        //先根据渲染状态合批. 然后根据mesh合批. 左后是这个mesh的transform数据
         std::map<VulkanPBRMaterial*, std::map<VulkanMesh*, std::vector<MeshNode>>>
             directional_light_mesh_drawcall_batch;
 

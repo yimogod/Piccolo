@@ -45,8 +45,11 @@ namespace Piccolo
         Vulkan         = std::make_shared<UVulkanProxy>();
         Vulkan->Device = std::static_pointer_cast<VulkanRHI>(m_rhi)->m_device;
         Vulkan->Gpu    = std::static_pointer_cast<VulkanRHI>(m_rhi)->m_physical_device;
-        VulkanDescriptorPool* Pool  = (VulkanDescriptorPool*)(std::static_pointer_cast<VulkanRHI>(m_rhi)->m_descriptor_pool);
-        Vulkan->DescriptorPool = Pool->getResource();
+        VulkanDescriptorPool* DescPool  = (VulkanDescriptorPool*)(std::static_pointer_cast<VulkanRHI>(m_rhi)->m_descriptor_pool);
+        Vulkan->DescriptorPool = DescPool->getResource();
+
+        VulkanCommandPool* CmdPool  = (VulkanCommandPool*)(std::static_pointer_cast<VulkanRHI>(m_rhi)->m_rhi_command_pool);
+        Vulkan->CmdPool2 = CmdPool->getResource();
         Vulkan->Initialized();
 
         // global rendering resource
