@@ -19,6 +19,7 @@ namespace Piccolo
     public:
         // initialize
         virtual void initialize(RHIInitInfo init_info) override final;
+        void initialize2(RHIInitInfo init_info);
         virtual void prepareContext() override final;
 
         // allocate and create

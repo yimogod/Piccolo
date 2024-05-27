@@ -41,7 +41,8 @@ namespace Piccolo
         m_rhi = std::make_shared<VulkanRHI>();
         m_rhi->initialize(rhi_init_info);
 
-        // 初始化Vulkan对象
+        //TODO 初始化Vulkan对象, 且同步兼容rhi和proxy
+        std::shared_ptr<VulkanRHI> rhi = std::static_pointer_cast<VulkanRHI>(m_rhi);
         Vulkan         = std::make_shared<UVulkanProxy>();
         Vulkan->Device = std::static_pointer_cast<VulkanRHI>(m_rhi)->m_device;
         Vulkan->Gpu    = std::static_pointer_cast<VulkanRHI>(m_rhi)->m_physical_device;
@@ -51,6 +52,20 @@ namespace Piccolo
         VulkanCommandPool* CmdPool  = (VulkanCommandPool*)(std::static_pointer_cast<VulkanRHI>(m_rhi)->m_rhi_command_pool);
         Vulkan->CmdPool2 = CmdPool->getResource();
         Vulkan->Initialized();
+
+        //反向同步render buffer
+        for(uint32_t i = 0; i < UVulkanProxy::SMaxFramesInFlight; ++i)
+        {
+            auto& Cmd = Vulkan->GetCmdBuffer(i);
+
+            rhi->m_command_buffers[i] = new VulkanCommandBuffer();
+            ((VulkanCommandBuffer*)rhi->m_command_buffers[i])->setResource(Cmd.GetVkCommandBuffer());
+            rhi->m_vk_command_buffers[i] = Cmd.GetVkCommandBuffer();
+        }
+
+
+        rhi->initialize2(rhi_init_info);
+
 
         // global rendering resource
         GlobalRenderingRes global_rendering_res;
@@ -113,6 +128,8 @@ namespace Piccolo
 
         // 调用图形API, prepare render command context
         m_rhi->prepareContext();
+        Vulkan->CurrFrameIndex = std::static_pointer_cast<VulkanRHI>(m_rhi)->m_current_frame_index;
+        Vulkan->PrepareContext();
 
         // 准备每帧所有pass公用的数据, update per-frame buffer
         m_render_resource->updatePerFrameBuffer(m_render_scene, m_render_camera);

@@ -133,9 +133,14 @@ namespace Piccolo
 
         createCommandPool();
 
-        createCommandBuffers();
+        //createCommandBuffers();
 
         createDescriptorPool();
+    }
+
+    void VulkanRHI::initialize2(RHIInitInfo init_info)
+    {
+
 
         createSyncPrimitives();
 

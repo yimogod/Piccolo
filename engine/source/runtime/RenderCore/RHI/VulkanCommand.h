@@ -67,7 +67,7 @@ public:
     void EndRenderPass();
 
     //绑定管线
-    void BindPipeline(VkPipeline& Pipeline);
+    void BindPipeline(FVulkanPipeline& Pipeline);
 
     //设置视口
     void SetViewport(VkViewport& Viewport);
@@ -97,7 +97,7 @@ public:
     //void CopyBuffer(FVulkanBuffer& SrcBuffer, FVulkanBuffer& DestBuffer);
 private:
     //原生命令缓冲区
-    VkCommandBuffer RawCommandBuffer;
+    VkCommandBuffer RawCommandBuffer = VK_NULL_HANDLE;
 
     //是否用于单次重操作的目的. 比如copybuffer之类的
     bool bOneTimeSubmit = false;

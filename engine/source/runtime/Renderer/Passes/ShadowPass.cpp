@@ -329,9 +329,11 @@ namespace Piccolo
             mesh_nodes.push_back(temp);
         }
 
-        VkCommandBuffer RawCommandBuffer;
-        RawCommandBuffer = ((VulkanCommandBuffer*)m_rhi->m_current_command_buffer)->getResource();
-        FVulkanCommandBuffer CB = FVulkanCommandBuffer(RawCommandBuffer);
+        //VkCommandBuffer RawCommandBuffer;
+        //RawCommandBuffer = ((VulkanCommandBuffer*)m_rhi->m_current_command_buffer)->getResource();
+        //FVulkanCommandBuffer CB = FVulkanCommandBuffer(RawCommandBuffer);
+
+        FVulkanCommandBuffer& CB = Vulkan->GetCmdBuffer();
 
         // Directional Light Shadow begin pass
         {
@@ -340,6 +342,7 @@ namespace Piccolo
             CB.BeginRenderPass(Packet.FrameBuffer, Packet.RenderPass, Packet.FrameBuffer.GetFullExtent());
 
             float color[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+            //Vulkan->PushEvent("Directional Light Shadow", color);
             m_rhi->pushEvent(m_rhi->getCurrentCommandBuffer(), "Directional Light Shadow", color);
         }
 
@@ -348,7 +351,7 @@ namespace Piccolo
             float color[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
             m_rhi->pushEvent(m_rhi->getCurrentCommandBuffer(), "Mesh", color);
 
-            m_rhi->cmdBindPipelinePFN(m_rhi->getCurrentCommandBuffer(), RHI_PIPELINE_BIND_POINT_GRAPHICS, Pipelines[0].pipeline);
+            CB.BindPipeline(Packet.GetPipeline(0));
 
             // perframe storage buffer
             uint32_t perframe_dynamic_offset =

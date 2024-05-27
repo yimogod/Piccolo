@@ -1,5 +1,6 @@
 #include "VulkanCommand.h"
 #include "VulkanFrameBuffer.h"
+#include "VulkanPipeline.h"
 #include "vulkan/vulkan_core.h"
 #include <stdexcept>
 
@@ -102,9 +103,9 @@ void FVulkanCommandBuffer::EndRenderPass()
     //if (!bRunning)return;
     vkCmdEndRenderPass(RawCommandBuffer);
 }
-void FVulkanCommandBuffer::BindPipeline(VkPipeline& Pipeline)
+void FVulkanCommandBuffer::BindPipeline(FVulkanPipeline& Pipeline)
 {
-    vkCmdBindPipeline(RawCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Pipeline);
+    vkCmdBindPipeline(RawCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Pipeline.GetVkPipeline());
 }
 void FVulkanCommandBuffer::SetViewport(VkViewport& Viewport)
 {
