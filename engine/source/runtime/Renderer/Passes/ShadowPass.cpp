@@ -174,7 +174,7 @@ namespace Piccolo
         // VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC 可被动态写入的buffer, 允许单个set中的单个缓冲区高频地更新
 
         // 3个set都用于顶点阶段, 在mesh_directional_light_shadow.vert中分别是mvp, meshinstance, joint_matrices(动画)
-        auto& Set = Packet.GetDescriptorSet(0);
+        FVulkanDescriptorSet& Set = Packet.GetDescriptorSet(0);
         //都用于顶点shader
         Set.SetBindingNum(3);
         Set.SetLayoutBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);
@@ -329,12 +329,7 @@ namespace Piccolo
             mesh_nodes.push_back(temp);
         }
 
-        //VkCommandBuffer RawCommandBuffer;
-        //RawCommandBuffer = ((VulkanCommandBuffer*)m_rhi->m_current_command_buffer)->getResource();
-        //FVulkanCommandBuffer CB = FVulkanCommandBuffer(RawCommandBuffer);
-
         FVulkanCommandBuffer& CB = Vulkan->GetCmdBuffer();
-
         // Directional Light Shadow begin pass
         {
             Packet.FrameBuffer.SetClearColorValue(0, {1.0f});
@@ -342,7 +337,6 @@ namespace Piccolo
             CB.BeginRenderPass(Packet.FrameBuffer, Packet.RenderPass, Packet.FrameBuffer.GetFullExtent());
 
             float color[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
-            //Vulkan->PushEvent("Directional Light Shadow", color);
             m_rhi->pushEvent(m_rhi->getCurrentCommandBuffer(), "Directional Light Shadow", color);
         }
 
@@ -385,19 +379,19 @@ namespace Piccolo
                     if (total_instance_count > 0)
                     {
                         // bind per mesh
-                        m_rhi->cmdBindDescriptorSetsPFN(m_rhi->getCurrentCommandBuffer(),
-                                                        RHI_PIPELINE_BIND_POINT_GRAPHICS,
-                                                        Pipelines[0].layout,
-                                                        1,
-                                                        1,
-                                                        &mesh->mesh_vertex_blending_descriptor_set,
-                                                        0,
-                                                        NULL);
+                        // TODO 兼容旧数据
+                        FVulkanDescriptorSet DS;
+                        auto vds = ((VulkanDescriptorSet*)mesh->mesh_vertex_blending_descriptor_set)->getResource();
+                        DS.SetVkDescriptorSet(vds);
+                        CB.BindDescriptorSets(Packet.GetPipeline(0), DS, 1);
 
-                        RHIBuffer*     vertex_buffers[] = {mesh->mesh_vertex_position_buffer};
-                        RHIDeviceSize offsets[]        = {0};
-                        m_rhi->cmdBindVertexBuffersPFN(m_rhi->getCurrentCommandBuffer(), 0, 1, vertex_buffers, offsets);
-                        m_rhi->cmdBindIndexBufferPFN(m_rhi->getCurrentCommandBuffer(), mesh->mesh_index_buffer, 0, RHI_INDEX_TYPE_UINT16);
+                        VkBuffer vvb = ((VulkanBuffer*)(mesh->mesh_vertex_position_buffer))->getResource();
+                        FVulkanBuffer VB = FVulkanBuffer(vvb);
+                        CB.BindVertexBuffer(VB);
+
+                        VkBuffer vib = ((VulkanBuffer*)(mesh->mesh_index_buffer))->getResource();
+                        FVulkanBuffer VIB = FVulkanBuffer(vib);
+                        CB.BindIndexBuffer(VIB);
 
                         uint32_t drawcall_max_instance_count =
                             (sizeof(MeshDirectionalLightShadowPerdrawcallStorageBufferObject::mesh_instances) /
@@ -502,23 +496,12 @@ namespace Piccolo
                             }
 
                             // bind perdrawcall
-                            uint32_t dynamic_offsets[3] = {perframe_dynamic_offset,
-                                                           perdrawcall_dynamic_offset,
-                                                           per_drawcall_vertex_blending_dynamic_offset};
-                            m_rhi->cmdBindDescriptorSetsPFN(m_rhi->getCurrentCommandBuffer(),
-                                                            RHI_PIPELINE_BIND_POINT_GRAPHICS,
-                                                            Pipelines[0].layout,
-                                                            0,
-                                                            1,
-                                                            &m_descriptor_infos[0].descriptor_set,
-                                                            (sizeof(dynamic_offsets) / sizeof(dynamic_offsets[0])),
-                                                            dynamic_offsets);
-                            m_rhi->cmdDrawIndexedPFN(m_rhi->getCurrentCommandBuffer(),
-                                                     mesh->mesh_index_count,
-                                                     current_instance_count,
-                                                     0,
-                                                     0,
-                                                     0);
+                            std::vector<uint32_t> DynamicOffsets = {perframe_dynamic_offset,
+                                                                     perdrawcall_dynamic_offset,
+                                                                     per_drawcall_vertex_blending_dynamic_offset};
+
+                            CB.BindDescriptorSets(Packet.GetPipeline(), Packet.GetDescriptorSet(), DynamicOffsets);
+                            CB.DrawIndexed(mesh->mesh_index_count, current_instance_count);
                         }
                     }
                 }
@@ -534,9 +517,7 @@ namespace Piccolo
         // Directional Light Shadow end pass
         {
             m_rhi->popEvent(m_rhi->getCurrentCommandBuffer());
-
             CB.EndRenderPass();
-            //m_rhi->cmdEndRenderPassPFN(m_rhi->getCurrentCommandBuffer());
         }
     }
 } // namespace Piccolo

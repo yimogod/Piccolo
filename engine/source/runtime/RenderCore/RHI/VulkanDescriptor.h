@@ -129,6 +129,9 @@ public:
     //获取原生描述符集
     VkDescriptorSet& GetVkDescriptorSet(){ return RawDescriptorSet; }
 
+    //TODO 兼容就引擎
+    void SetVkDescriptorSet(VkDescriptorSet& Set){ RawDescriptorSet = Set; }
+
     //共需要多少个绑定或者槽位
     void SetBindingNum(uint32_t Num);
 

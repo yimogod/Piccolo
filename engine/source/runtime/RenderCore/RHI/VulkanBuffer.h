@@ -27,7 +27,7 @@ protected:
     void InnerCreateBuffer(VkDevice& Device, VkPhysicalDevice& Gpu, VkBufferUsageFlags Usage,
                            VkMemoryPropertyFlags MemoryProperty);
 
-    VkBuffer       RawBuffer       = VK_NULL_HANDLE;
+    VkBuffer RawBuffer       = VK_NULL_HANDLE;
     VkDeviceMemory RawBufferMemory = VK_NULL_HANDLE;
     //缓存当前buff的大小
     uint64_t BufferSize = 0;

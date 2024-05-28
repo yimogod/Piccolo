@@ -7,6 +7,7 @@ class FVulkanFrameBuffer;
 class FVulkanPipeline;
 class FVulkanDescriptorSet;
 class FVulkanRenderPass;
+class FVulkanBuffer;
 
 class FVulkanCommandBuffer;
 
@@ -76,15 +77,15 @@ public:
     void SetScissor(VkRect2D& Scissor);
 
     //绑定顶点缓冲区
-    void BindVertexBuffer(VkBuffer& Buffer);
+    void BindVertexBuffer(FVulkanBuffer& Buffer);
     
 	//绑定索引缓冲区
-    void BindIndexBuffer(VkBuffer& Buffer);
+    void BindIndexBuffer(FVulkanBuffer& Buffer);
 
     //绑定描述符集 
-    void BindDescriptorSets(VkPipelineLayout& PipelineLayout, VkDescriptorSet& DescriptorSet, uint32_t FirstSet = 0);
+    void BindDescriptorSets(FVulkanPipeline& Pipeline, FVulkanDescriptorSet& DescriptorSet, uint32_t FirstSet = 0);
     //绑定描述符集
-    void BindDescriptorSets(VkPipelineLayout& PipelineLayout, VkDescriptorSet& DescriptorSet, std::vector<uint32_t>& DynamicOffsets);
+    void BindDescriptorSets(FVulkanPipeline& Pipeline, FVulkanDescriptorSet& DescriptorSet, std::vector<uint32_t>& DynamicOffsets);
 
     //绘制指令
     void DrawIndexed(uint32_t IndexNum, uint32_t InstanceNum = 1);

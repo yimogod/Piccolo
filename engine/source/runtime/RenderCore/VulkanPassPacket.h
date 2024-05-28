@@ -24,9 +24,13 @@ public:
     //VkDescriptorSet& GetVkDescriptorSet() { return DescriptorSets[0].GetDescriptorSet(); }
     //VkDescriptorSetLayout& GetVkDescriptorLayout() { return DescriptorSets[0].GetLayout(); }
 
+    //获取第一个描述符集合. 用于只有一个描述符集的情况
+    FVulkanDescriptorSet& GetDescriptorSet() { return DescriptorSets[0]; }
     //获取描述符集合
     FVulkanDescriptorSet& GetDescriptorSet(uint32_t Index) { return DescriptorSets[Index]; }
 
+    //获取默认的Pipeline
+    FVulkanPipeline& GetPipeline() { return Pipelines[0]; }
     //获取sub pass 的管线
     FVulkanPipeline& GetPipeline(uint32_t Index) { return Pipelines[Index]; }
 

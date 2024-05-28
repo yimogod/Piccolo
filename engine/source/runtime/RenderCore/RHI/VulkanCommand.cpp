@@ -1,6 +1,7 @@
 #include "VulkanCommand.h"
 #include "VulkanFrameBuffer.h"
 #include "VulkanPipeline.h"
+#include "VulkanBuffer.h"
 #include "vulkan/vulkan_core.h"
 #include <stdexcept>
 
@@ -103,10 +104,12 @@ void FVulkanCommandBuffer::EndRenderPass()
     //if (!bRunning)return;
     vkCmdEndRenderPass(RawCommandBuffer);
 }
+
 void FVulkanCommandBuffer::BindPipeline(FVulkanPipeline& Pipeline)
 {
     vkCmdBindPipeline(RawCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Pipeline.GetVkPipeline());
 }
+
 void FVulkanCommandBuffer::SetViewport(VkViewport& Viewport)
 {
     vkCmdSetViewport(RawCommandBuffer, 0, 1, &Viewport);
@@ -115,47 +118,51 @@ void FVulkanCommandBuffer::SetScissor(VkRect2D& Scissor)
 {
     vkCmdSetScissor(RawCommandBuffer, 0, 1, &Scissor);
 }
-void FVulkanCommandBuffer::BindVertexBuffer(VkBuffer& Buffer)
+void FVulkanCommandBuffer::BindVertexBuffer(FVulkanBuffer& Buffer)
 {
     VkDeviceSize Offsets[] = { 0 };
-    //auto BufferData = VertexBuffer.GetVkData();
+    VkBuffer& BufferData = Buffer.GetVkBuffer();
     vkCmdBindVertexBuffers(RawCommandBuffer,
                            0, //顶点数据缓冲在列表中的索引
                            1, //顶点缓冲的数量
-                           &Buffer, //顶点数据缓冲地址
+                           &BufferData, //顶点数据缓冲地址
                            Offsets //各个顶点数据缓冲的内部偏移量
     );
 }
-void FVulkanCommandBuffer::BindIndexBuffer(VkBuffer& Buffer)
+
+void FVulkanCommandBuffer::BindIndexBuffer(FVulkanBuffer& Buffer)
 {
     vkCmdBindIndexBuffer(RawCommandBuffer,
-                         Buffer,
+                         Buffer.GetVkBuffer(),
                          0, //各个索引数据在缓冲区的内部偏移
                          VK_INDEX_TYPE_UINT16 //因为demo我们的定点数肯定小于65536, 所以用了uint16, 可以省一半内存
     );
 }
-void FVulkanCommandBuffer::BindDescriptorSets(VkPipelineLayout& PipelineLayout, VkDescriptorSet& DescriptorSet, uint32_t FirstSet)
+
+void FVulkanCommandBuffer::BindDescriptorSets(FVulkanPipeline& Pipeline, FVulkanDescriptorSet& DescriptorSet, uint32_t FirstSet)
 {
     vkCmdBindDescriptorSets(RawCommandBuffer,
                             VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            PipelineLayout,
+                            Pipeline.GetVkLayout(),
                             FirstSet,
                             1,
-                            &DescriptorSet,
+                            &DescriptorSet.GetVkDescriptorSet(),
                             0,
                             nullptr);
 }
-void FVulkanCommandBuffer::BindDescriptorSets(VkPipelineLayout& PipelineLayout, VkDescriptorSet& DescriptorSet, std::vector<uint32_t>& DynamicOffsets)
+
+void FVulkanCommandBuffer::BindDescriptorSets(FVulkanPipeline& Pipeline, FVulkanDescriptorSet& DescriptorSet, std::vector<uint32_t>& DynamicOffsets)
 {
     vkCmdBindDescriptorSets(RawCommandBuffer,
                             VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            PipelineLayout,
+                            Pipeline.GetVkLayout(),
                             0,
                             1,
-                            &DescriptorSet,
+                            &DescriptorSet.GetVkDescriptorSet(),
                             DynamicOffsets.size(),
                             DynamicOffsets.data());
 }
+
 void FVulkanCommandBuffer::DrawIndexed(uint32_t IndexNum, uint32_t InstanceNum)
 {
     vkCmdDrawIndexed(RawCommandBuffer,
