@@ -41,6 +41,7 @@ namespace Piccolo
                 vulkan_resource->m_mesh_directional_light_shadow_perframe_storage_buffer_object;
         }
     }
+
     void UShadowPass::draw() { drawModel(); }
 
     //创建帧缓存需要的所有附件. 针对本Pass, 用到了2个附件.
@@ -174,7 +175,7 @@ namespace Piccolo
         // VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC 可被动态写入的buffer, 允许单个set中的单个缓冲区高频地更新
 
         // 3个set都用于顶点阶段, 在mesh_directional_light_shadow.vert中分别是mvp, meshinstance, joint_matrices(动画)
-        FVulkanDescriptorSet& Set = Packet.GetDescriptorSet(0);
+        FVulkanDescriptorSet& Set = Packet.GetDescriptorSet();
         //都用于顶点shader
         Set.SetBindingNum(3);
         Set.SetLayoutBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT);
@@ -192,7 +193,7 @@ namespace Piccolo
     void UShadowPass::setupPipelines()
     {
         Packet.SetPipelineNum(1);
-        FVulkanPipeline& Pipeline = Packet.GetPipeline(0);
+        FVulkanPipeline& Pipeline = Packet.GetPipeline();
 
         //设置管线布局, 管线布局用到了两个描述集布局
         std::vector<VkDescriptorSetLayout> DescLayouts = {
